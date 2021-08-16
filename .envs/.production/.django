@@ -1,0 +1,33 @@
+# General
+# ------------------------------------------------------------------------------
+# DJANGO_READ_DOT_ENV_FILE=True
+DJANGO_SETTINGS_MODULE=config.settings.production
+DJANGO_SECRET_KEY=gVROwfN9d6MiAGyIGjs9ZjfdYLLEPGJDea3HiCr8PLMcVz4TwjMYE7NO5j83PDmW
+DJANGO_ADMIN_URL=L9wDJts8kwQdTWgyVL1hmONCtu3a8CFL/
+DJANGO_ALLOWED_HOSTS=.planthub.idiv.de
+
+# Security
+# ------------------------------------------------------------------------------
+# TIP: better off using DNS, however, redirect is OK too
+DJANGO_SECURE_SSL_REDIRECT=False
+
+# Email
+# ------------------------------------------------------------------------------
+DJANGO_SERVER_EMAIL=
+
+
+# django-allauth
+# ------------------------------------------------------------------------------
+DJANGO_ACCOUNT_ALLOW_REGISTRATION=True
+
+# Gunicorn
+# ------------------------------------------------------------------------------
+WEB_CONCURRENCY=4
+
+# Celery
+# ------------------------------------------------------------------------------
+
+# Flower
+CELERY_FLOWER_USER=rkXmdzkJfNUKfKTngYFrQYMMGtuNOLDm
+CELERY_FLOWER_PASSWORD=iAKqrtpTr56fbr5BLMIJSPIUdwkdrQY8kP2LgrGZMamV5AJ7DSUcBJxf8HrxlrBu
+
