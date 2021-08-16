@@ -17,6 +17,7 @@ flake8:
   script:
     - flake8
 
+
 pytest:
   stage: test
   image: docker/compose:latest
