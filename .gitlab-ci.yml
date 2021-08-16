@@ -21,8 +21,8 @@ flake8:
 pytest:
   stage: test
   image: docker/compose:latest
-  tags:
-    - docker
+ #   tags:
+ #   - docker
   services:
     - docker:dind
   before_script:
