@@ -1,7 +1,12 @@
 PlantHub
 ========
 
-PlanHub
+To setup locally follow the steps from here: https://cookiecutter-django.readthedocs.io/en/latest/developing-locally.html
+starting at step 4.
+
+Before you start you may have to update your pip version (in PyCharm by default currently versoin 19.x which does not work).
+
+
 
 .. image:: https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter
      :target: https://github.com/pydanny/cookiecutter-django/
