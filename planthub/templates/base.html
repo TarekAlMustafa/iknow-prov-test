@@ -1,11 +1,11 @@
-{% load static i18n compress%}<!DOCTYPE html>
+{% load static i18n %}<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title>{% block title %}PlantHub{% endblock title %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="PlantHub Website">
+    <meta name="description" content="PlanHub">
     <meta name="author" content="Franziska Zander">
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
@@ -17,9 +17,9 @@
 
     {% block css %}
 
-    <!-- Your stuff: Third-party CSS libraries go here -->{% compress css %}
+    <!-- Your stuff: Third-party CSS libraries go here -->
     <!-- This file stores project-specific CSS -->
-    <link href="{% static 'css/project.css' %}" rel="stylesheet">{% endcompress %}
+    <link href="{% static 'css/project.css' %}" rel="stylesheet">
     {% endblock %}
     <!-- Le javascript
     ================================================== -->
@@ -32,8 +32,8 @@
 
       <!-- Your stuff: Third-party javascript libraries go here -->
 
-      <!-- place project specific Javascript in this file -->{% compress js %}
-      <script defer src="{% static 'js/project.js' %}"></script>{% endcompress %}
+      <!-- place project specific Javascript in this file -->
+      <script defer src="{% static 'js/project.js' %}"></script>
 
     {% endblock javascript %}
 

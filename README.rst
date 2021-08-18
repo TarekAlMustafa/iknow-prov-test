@@ -1,11 +1,7 @@
 PlantHub
 ========
 
-PlantHub Website
-
-initial test setup
-
-P.ease create your own brach, if you like to play and change things.
+PlanHub
 
 .. image:: https://img.shields.io/badge/built%20with-Cookiecutter%20Django-ff69b4.svg?logo=cookiecutter
      :target: https://github.com/pydanny/cookiecutter-django/
@@ -69,20 +65,6 @@ Moved to `Live reloading and SASS compilation`_.
 
 .. _`Live reloading and SASS compilation`: http://cookiecutter-django.readthedocs.io/en/latest/live-reloading-and-sass-compilation.html
 
-Celery
-^^^^^^
-
-This app comes with Celery.
-
-To run a celery worker:
-
-.. code-block:: bash
-
-    cd planthub
-    celery -A config.celery_app worker -l info
-
-Please note: For Celery's import magic to work, it is important *where* the celery commands are run. If you are in the same folder with *manage.py*, you should be right.
-
 Email Server
 ^^^^^^^^^^^^
 
@@ -95,18 +77,10 @@ With MailHog running, to view messages that are sent by your application, open y
 
 .. _mailhog: https://github.com/mailhog/MailHog
 
-
 Deployment
 ----------
 
 The following details how to deploy this application.
-
-Heroku
-^^^^^^
-
-See detailed `cookiecutter-django Heroku documentation`_.
-
-.. _`cookiecutter-django Heroku documentation`: http://cookiecutter-django.readthedocs.io/en/latest/deployment-on-heroku.html
 
 Docker
 ^^^^^^
