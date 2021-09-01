@@ -1,16 +1,20 @@
 from django.contrib.auth.models import AbstractUser
-from django.db.models import CharField
+from django.db.models import CharField, ForeignKey
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
+from django.db import models
 
+class Organization(models.Model):
+    name = CharField(_("Name of Ogranization"), blank=True, max_length=255)
 
 class User(AbstractUser):
     """Default user for PlantHub."""
 
-    #: First and last name do not cover name patterns around the globe
     name = CharField(_("Name of User"), blank=True, max_length=255)
-    first_name = None  # type: ignore
-    last_name = None  # type: ignore
+    first_name = CharField(_("First name"), blank=True, max_length=255)
+    last_name = CharField(_("Last name"), blank=True, max_length=255)
+    status = CharField(_("Status of Member"), max_length=255, choices=(("stuff", "stuff"), ("student", "student")))
+    organization = ForeignKey(Organization, verbose_name=_("Organization"), blank=True, null=True, on_delete=models.DO_NOTHING)
 
     def get_absolute_url(self):
         """Get url for user's detail view.
@@ -20,3 +24,5 @@ class User(AbstractUser):
 
         """
         return reverse("users:detail", kwargs={"username": self.username})
+
+
