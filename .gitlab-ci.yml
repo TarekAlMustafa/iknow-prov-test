@@ -22,7 +22,7 @@ pytest:
  # image: docker/compose:latest
  # tags:
  #   - docker
- image:
+  image:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
 
