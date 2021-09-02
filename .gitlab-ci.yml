@@ -43,7 +43,7 @@ pytest:
     DATABASE_URL: pgsql://$POSTGRES_USER:$POSTGRES_PASSWORD@idiv-db1.inf-bb.uni-jena.de:5433/$POSTGRES_DB
 
   before_script:
-    - ifconfig
+    - ping idiv-db1.inf-bb.uni-jena.de
     - pip install -r requirements/local.txt
 
   script:
