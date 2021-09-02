@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from datasets.models import Dataset, File, Datastructure, DatastructureInline
+from planthub.datasets.models import Dataset, File, Datastructure, DatastructureInline
 #from suit.admin import SortableListForm
 
 
