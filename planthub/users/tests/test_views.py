@@ -11,11 +11,7 @@ from django.urls import reverse
 from planthub.users.forms import UserChangeForm
 from planthub.users.models import User
 from planthub.users.tests.factories import UserFactory
-from planthub.users.views import (
-    UserRedirectView,
-    UserUpdateView,
-    user_detail_view,
-)
+from planthub.users.views import UserRedirectView, UserUpdateView, user_detail_view
 
 pytestmark = pytest.mark.django_db
 

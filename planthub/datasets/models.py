@@ -1,32 +1,36 @@
-from django.utils.translation import gettext_lazy as _
-from django.db import models
-from semantic_version import django_fields as semVer
 import os
 
-#todo add display name, add help, null/empty
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from semantic_version import django_fields as semVer
 
+
+# todo add display name, add help, null/empty
 class Dataset(models.Model):
-    title =  models.CharField(max_length=500)
+    title = models.CharField(_("Title"), max_length=500)
     description = models.CharField(max_length=1000)
     source = models.CharField(max_length=1000)
     contact = models.CharField(max_length=1000)
     link_metadata = models.CharField(max_length=1000)
     link_datasource = models.CharField(max_length=1000)
-    show = models.BooleanField
-    download = models.BooleanField
-    viz =models.BooleanField
+    show = models.BooleanField()
+    download = models.BooleanField()
+    viz = models.BooleanField()
 
     def __str__(self):
         return self.title
 
+
 def get_file_path(self, filename):
     return os.path.join('files', str(self.dataset.id), str(self.version), filename)
+
 
 class Datastructure(models.Model):
     name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
+
 
 class DatastructureInline(models.Model):
     order = models.PositiveIntegerField(default=0)
@@ -39,6 +43,7 @@ class DatastructureInline(models.Model):
     show = models.BooleanField()
     download = models.BooleanField()
     viz = models.BooleanField()
+
 
 class File(models.Model):
     file = models.FileField("File", upload_to=get_file_path)
@@ -54,6 +59,6 @@ class File(models.Model):
         return self.file.__sizeof__()
 
     def __str__(self):
-        return os.path.basename(self.file.name) + "("+ str(self.version) + ")"
+        return os.path.basename(self.file.name) + "(" + str(self.version) + ")"
 
-    #todo get latest version for a dataset, get all ordered by version (-> view.py)
+    # todo get latest version for a dataset, get all ordered by version (-> view.py)
