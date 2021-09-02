@@ -8,6 +8,8 @@ variables:
   POSTGRES_DB: 'planthub_test'
   POSTGRES_HOST_AUTH_METHOD: trust
   
+script:
+    - Ifconfig
 
 #flake8:
 #  stage: lint
