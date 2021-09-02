@@ -35,8 +35,8 @@ variables:
 pytest:
   stage: test
   image: python:3.9
-  tags:
-    - python
+ # tags:
+ #   - python
   services:
     - postgres:13.4
   variables:
