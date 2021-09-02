@@ -7,9 +7,7 @@ variables:
   POSTGRES_PASSWORD: 'test'
   POSTGRES_DB: 'planthub_test'
   POSTGRES_HOST_AUTH_METHOD: trust
-  
-script:
-    - Ifconfig
+
 
 #flake8:
 #  stage: lint
@@ -39,6 +37,8 @@ pytest:
   image: python:3.9
  # tags:
  #   - python
+  script:
+    - Ifconfig
   services:
     - postgres:13.4
   variables:
@@ -47,7 +47,7 @@ pytest:
   before_script:
     - pip install -r requirements/local.txt
 
-  script:
-    - pytest
+  #script:
+  #  - pytest
 
 
