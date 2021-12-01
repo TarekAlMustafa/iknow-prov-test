@@ -26,5 +26,6 @@ class FilesAdmin(admin.ModelAdmin):
 
 @admin.register(Datastructure)
 class DatastructuresAdmin(admin.ModelAdmin):
-    list_display = ('name',)
+    list_display = ('name', 'version')
+    exclude = ('version',)
     inlines = (DatastructureInline,)
