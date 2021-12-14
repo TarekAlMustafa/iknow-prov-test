@@ -1,6 +1,7 @@
 import os
 
 from django.db import models
+from django.db.models import Max
 from django.utils.translation import gettext_lazy as _
 from semantic_version import django_fields as semVer
 
@@ -22,14 +23,25 @@ class Dataset(models.Model):
 
 
 def get_file_path(self, filename):
-    return os.path.join('files', str(self.dataset.id), str(self.version), filename)
+    return os.path.join("files", str(self.dataset.id), str(self.version), filename)
 
 
 class Datastructure(models.Model):
     name = models.CharField(max_length=100)
+    version = models.PositiveIntegerField(default=1)
 
     def __str__(self):
-        return self.name
+        return self.name + ": v" + str(self.version)
+
+    def save(self):
+        "Get last value of Version from database, and increment before save"
+        datastruct_exist = Datastructure.objects.filter(
+            name=self.name, version=self.version
+        ).exists()
+        if datastruct_exist:
+            top = Datastructure.objects.filter(name=self.name).aggregate(Max("version"))
+            self.version = top["version__max"] + 1
+        super(Datastructure, self).save()
 
 
 class DatastructureInline(models.Model):
@@ -50,7 +62,9 @@ class File(models.Model):
     version = semVer.VersionField(coerce=True, max_length=30)
     date = models.DateField()
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
-    datastructure = models.ForeignKey(Datastructure, on_delete=models.DO_NOTHING, null=True)
+    datastructure = models.ForeignKey(
+        Datastructure, on_delete=models.DO_NOTHING, null=True
+    )
 
     def file_name(self):
         return os.path.basename(self.file.name)
