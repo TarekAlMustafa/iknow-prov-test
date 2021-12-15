@@ -15,13 +15,38 @@ from django.conf import settings
 import pandas as pd
 import numpy as np
 from io import BytesIO as IO
-import tarfile
+import mimetypes
+from django.http import StreamingHttpResponse
+from wsgiref.util import FileWrapper
 
-# read xslx and create Http response object accordingly
-def read_respond_xslx(filepath, name):
-    PandasDataFrame = pd.read_excel(filepath)
+
+# read xlsx and return dataframe
+def read_xslx(filepath, _):
+
+    try:
+        PandasDataFrame = pd.read_excel(filepath)
+    except UnicodeDecodeError as e:
+        PandasDataFrame = pd.read_csv(filepath, encoding="iso-8859-1")
     PandasDataFrame = PandasDataFrame.fillna("NA")
 
+    return (PandasDataFrame, True)
+
+
+# read csv and return dataframe
+def read_csv(filepath, _):
+
+    try:
+        PandasDataFrame = pd.read_csv(filepath)
+    except UnicodeDecodeError as e:
+        PandasDataFrame = pd.read_csv(filepath, encoding="iso-8859-1")
+
+    PandasDataFrame = PandasDataFrame.fillna("NA")
+
+    return (PandasDataFrame, True)
+
+
+# create Http response object with xlsx data
+def respond_xlsx(PandasDataFrame, name):
     # create IO stream to provide the requested file as a response
     sio = IO()
     PandasWriter = pd.ExcelWriter(sio, engine="xlsxwriter")
@@ -37,11 +62,8 @@ def read_respond_xslx(filepath, name):
     return response
 
 
-# read csv and create Http response object accordingly
-def read_respond_csv(filepath, name):
-    PandasDataFrame = pd.read_csv(filepath)
-    PandasDataFrame = PandasDataFrame.fillna("NA")
-
+# create Http response object with csv data
+def respond_csv(PandasDataFrame, name):
     # create response object
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = "attachment; filename=" + name + ".csv"
@@ -50,17 +72,15 @@ def read_respond_csv(filepath, name):
     return response
 
 
-# read gz and create Http response object accordingly
-def read_respond_gz(filepath, name):
-    tar_file = open(filepath, "rb")
-    response = response = HttpResponse(tar_file, content_type="application/tar+gzip")
-    response["Content-Disposition"] = "attachment; filename=" + name + ".gz"
-    return response
-
-
 # read other format and create Http response object accordingly
 def other_format(filepath, name):
-    pass
+    type = mimetypes.guess_type(filepath)[0] or mimetypes.guess_type(filepath)[1]
+    file = open(filepath, "rb")
+    response = response = HttpResponse(file, content_type=type)
+    response["Content-Disposition"] = "attachment; filename= %s" % os.path.basename(
+        filepath
+    )
+    return (response, False)
 
 
 # method to download metadata
@@ -129,12 +149,17 @@ def download_data(request):
         basename = os.path.basename(path)
 
         # dict maps -> file extension with respective handler
-        read_file_dict = {
-            ".csv": read_respond_csv,
-            ".xlsx": read_respond_xslx,
-            ".gz": read_respond_gz,
-        }
+        read_file_dict = {".csv": read_csv, ".xlsx": read_xslx}
+        create_response_dict = {"csv": respond_csv, "xlsx": respond_xlsx}
 
-        response = read_file_dict.get(extension, other_format)(data_filepath, basename)
+        # read requested data based on extension
+        # get dataframe for known extension or a response object for unknown extension
+        response, is_dataframe = read_file_dict.get(extension, other_format)(
+            data_filepath, basename
+        )
+
+        # if dataframe is returned then convert it according to the requested format with reponse object
+        if is_dataframe:
+            response = create_response_dict.get(format, respond_csv)(response, basename)
 
     return response
