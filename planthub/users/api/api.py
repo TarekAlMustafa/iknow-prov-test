@@ -1,9 +1,12 @@
 from knox.models import AuthToken
 from rest_framework import generics, permissions
 from rest_framework.response import Response
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 
 from .serializers import CreateUserSerializer, LoginUserSerializer, UserSerializer
 
+User = get_user_model()
 
 class RegistrationAPI(generics.GenericAPIView):
     serializer_class = CreateUserSerializer
@@ -11,6 +14,9 @@ class RegistrationAPI(generics.GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        if User.objects.filter(email=request.data['email']).exists():
+            raise ValidationError("A user with this email already exists.")
         user = serializer.save()
         return Response({
             "user": CreateUserSerializer(user, context=self.get_serializer_context()).data,
