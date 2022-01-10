@@ -16,14 +16,6 @@ SECRET_KEY = env(
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
 
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'test_db.sqlite3',
-    }
-}
-
-
 
 
 # PASSWORDS
