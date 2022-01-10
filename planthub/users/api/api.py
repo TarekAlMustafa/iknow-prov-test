@@ -1,10 +1,11 @@
 from knox.models import AuthToken
-from rest_framework import generics, permissions
+from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 
-from .serializers import CreateUserSerializer, LoginUserSerializer, UserSerializer
+from .serializers import CreateUserSerializer, LoginUserSerializer, UserSerializer, OrganizationSerializer
+from planthub.users.models import Organization
 
 User = get_user_model()
 
@@ -45,3 +46,13 @@ class UserApi(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+class OrganizationAPI(generics.GenericAPIView):
+    def get_object(self):
+        return Organization.objects.all()
+
+    def get(self, request):
+        organizations = self.get_object()
+        print(organizations)
+        serializer = OrganizationSerializer(organizations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)

@@ -8,6 +8,8 @@ from django.utils.translation import gettext_lazy as _
 class Organization(models.Model):
     name = CharField(_("Name of Ogranization"), blank=True, max_length=255)
 
+    def __str__(self):
+        return self.name
 
 class User(AbstractUser):
     """Default user for PlantHub."""
