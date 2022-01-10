@@ -32,7 +32,8 @@ pytest:
   image: python:3.9
  # tags:
  #   - python
-
+  variables:
+    DATABASE_URL: 'sqlite:////test_db.sqlite3'
 
   before_script:
 
