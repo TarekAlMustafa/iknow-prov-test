@@ -297,13 +297,13 @@ REST_FRAMEWORK = {
 }
 
 # django-cors-headers - https://github.com/adamchainz/django-cors-headers#setup
-CORS_URLS_REGEX = r"^/(api|users)/.*$"
+CORS_URLS_REGEX = r"^/(api|users|datasets)/.*$"
 
 # Your stuff...
 # ------------------------------------------------------------------------------
 # Allow all or only a certain address 
 #CORS_ALLOW_ALL_ORIGINS = True
-CORS_ALLOWED_ORIGINS = (
+CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
-)
+]
 
