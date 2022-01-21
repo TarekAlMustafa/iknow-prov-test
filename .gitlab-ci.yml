@@ -2,20 +2,14 @@ stages:
   - lint
   - test
 
-variables:
-  POSTGRES_USER: 'test'
-  POSTGRES_PASSWORD: 'test'
-  POSTGRES_DB: 'planthub_test'
-  POSTGRES_HOST_AUTH_METHOD: md5
 
-
-#flake8:
-#  stage: lint
-#  image: python:3.9-alpine
-#  before_script:
- #   - pip install -q flake8
-#  script:
- #   - flake8
+flake8:
+  stage: lint
+  image: python:3.9-alpine
+  before_script:
+   - pip install -q flake8
+  script:
+   - flake8
 
 #pytest:
 #  stage: test
@@ -37,16 +31,11 @@ pytest:
   image: python:3.9
  # tags:
  #   - python
-  services:
-    - postgres:13.4
   variables:
-    DATABASE_URL: pgsql://$POSTGRES_USER:$POSTGRES_PASSWORD@idiv-db1.inf-bb.uni-jena.de:5433/planthub_test
+    DATABASE_URL: 'sqlite:////test_db.sqlite3'
 
   before_script:
-   # - apt-get update && apt-get install -y iputils-ping
-  #  - ping idiv-db1.inf-bb.uni-jena.de
-   # - apt-get update && apt-get install -y net-tools
-   # - ifconfig
+
     - pip install -r requirements/local.txt
 
   script:
