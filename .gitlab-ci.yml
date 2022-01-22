@@ -29,8 +29,7 @@ flake8:
 pytest_3_9:
   stage: test
   image: python:3.9
- # tags:
- #   - python
+
   variables:
     DATABASE_URL: 'sqlite:////test_db.sqlite3'
 
@@ -38,13 +37,17 @@ pytest_3_9:
     - pip install -r requirements/local.txt
 
   script:
-    - pytest
+    - pytest --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+
 
 pytest_3_10:
   stage: test
   image: python:3.10
- # tags:
- #   - python
+
   variables:
     DATABASE_URL: 'sqlite:////test_db.sqlite3'
 
@@ -52,6 +55,10 @@ pytest_3_10:
     - pip install -r requirements/local.txt
 
   script:
-    - pytest
+    - pytest --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
 
 
