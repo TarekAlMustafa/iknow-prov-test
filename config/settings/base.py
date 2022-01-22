@@ -40,7 +40,7 @@ LOCALE_PATHS = [str(ROOT_DIR / "locale")]
 # DATABASES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
-#DATABASES = {"default": env.db("DATABASE_URL")}
+# DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES = {
     'default': {
 
@@ -52,7 +52,6 @@ DATABASES = {
         'PORT': '5432',
     }
 }
-
 
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
@@ -82,7 +81,7 @@ THIRD_PARTY_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "rest_framework",
-   # "rest_framework.authtoken",
+    # "rest_framework.authtoken",
     "corsheaders",
     "knox"
 ]
@@ -256,7 +255,7 @@ LOGGING = {
     "formatters": {
         "verbose": {
             "format": "%(levelname)s %(asctime)s %(module)s "
-            "%(process)d %(thread)d %(message)s"
+                      "%(process)d %(thread)d %(message)s"
         }
     },
     "handlers": {
@@ -268,7 +267,6 @@ LOGGING = {
     },
     "root": {"level": "INFO", "handlers": ["console"]},
 }
-
 
 # django-allauth
 # ------------------------------------------------------------------------------
@@ -289,11 +287,11 @@ SOCIALACCOUNT_ADAPTER = "planthub.users.adapters.SocialAccountAdapter"
 # django-rest-framework - https://www.django-rest-framework.org/api-guide/settings/
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ('knox.auth.TokenAuthentication',),
-   # "DEFAULT_AUTHENTICATION_CLASSES": (
-       # "rest_framework.authentication.SessionAuthentication",
-       # "rest_framework.authentication.TokenAuthentication",
-   # ),
-  #  "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    # "DEFAULT_AUTHENTICATION_CLASSES": (
+    # "rest_framework.authentication.SessionAuthentication",
+    # "rest_framework.authentication.TokenAuthentication",
+    # ),
+    #  "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
 
 # django-cors-headers - https://github.com/adamchainz/django-cors-headers#setup
@@ -301,9 +299,8 @@ CORS_URLS_REGEX = r"^/(api|users|datasets)/.*$"
 
 # Your stuff...
 # ------------------------------------------------------------------------------
-# Allow all or only a certain address 
-#CORS_ALLOW_ALL_ORIGINS = True
+# Allow all or only a certain address
+# CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
-
