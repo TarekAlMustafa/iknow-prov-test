@@ -1,10 +1,12 @@
 from django.urls import path  # ,include
 from knox import views as knox_views
-from . import views
 
 from planthub.users.views import user_detail_view, user_redirect_view, user_update_view
 
-from .api.api import LoginAPI, RegistrationAPI, UserApi, OrganizationAPI
+from .api.api import LoginAPI, OrganizationAPI, RegistrationAPI, UserApi
+
+# from . import views
+
 
 app_name = "users"
 urlpatterns = [

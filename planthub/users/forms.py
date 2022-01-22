@@ -16,5 +16,5 @@ class UserCreationForm(admin_forms.UserCreationForm):
 
         error_messages = {
             "username": {"unique": _("This username has already been taken.")},
-            "email": {"unique": _("This email is already used.")}  
+            "email": {"unique": _("This email is already used.")}
         }

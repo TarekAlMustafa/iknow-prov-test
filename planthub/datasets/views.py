@@ -5,19 +5,22 @@
 # from django.utils.translation import gettext_lazy as _
 # from django.views.generic import DetailView, RedirectView, UpdateView
 
+import mimetypes
 import os
+from io import BytesIO as IO
+
+# import numpy as np
+import pandas as pd
+from django.conf import settings
+# from django.core import serializers
 from django.db.models import Max
 from django.db.models.functions import Lower
-from django.http.response import HttpResponse, JsonResponse
-from django.core import serializers
-from .models import Dataset, Datastructure, DatastructureInline, File, get_file_path
-from django.conf import settings
-import pandas as pd
-import numpy as np
-from io import BytesIO as IO
-import mimetypes
-from django.http import StreamingHttpResponse
-from wsgiref.util import FileWrapper
+# from django.http import StreamingHttpResponse
+from django.http.response import HttpResponse  # JsonResponse
+
+from .models import Dataset, Datastructure, DatastructureInline, File  # get_file_path
+
+# from wsgiref.util import FileWrapper
 
 
 # read xlsx and return dataframe
@@ -25,7 +28,7 @@ def read_xslx(filepath, _):
 
     try:
         PandasDataFrame = pd.read_excel(filepath)
-    except UnicodeDecodeError as e:
+    except UnicodeDecodeError:
         PandasDataFrame = pd.read_csv(filepath, encoding="iso-8859-1")
     PandasDataFrame = PandasDataFrame.fillna("NA")
 
@@ -37,8 +40,8 @@ def read_csv(filepath, _):
 
     try:
         PandasDataFrame = pd.read_csv(filepath)
-    except UnicodeDecodeError as e:
-        PandasDataFrame = pd.read_csv(filepath, encoding="iso-8859-1")
+    except UnicodeDecodeError:
+        PandasDataFrame = pd.read_csv(filepath, encoding="ISO-8859-1")
 
     PandasDataFrame = PandasDataFrame.fillna("NA")
 

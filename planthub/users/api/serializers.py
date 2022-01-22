@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, get_user_model
 from rest_framework import serializers
 
 from planthub.users.models import Organization
+
 User = get_user_model()
 
 
@@ -22,7 +23,8 @@ class CreateUserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validate_data):
-        user = User.objects.create_user(validate_data['username'], validate_data['email'], validate_data['password'], organization= validate_data['organization'])
+        user = User.objects.create_user(validate_data['username'], validate_data['email'], validate_data['password'],
+                                        organization=validate_data['organization'])
         return user
 
 
@@ -36,9 +38,8 @@ class LoginUserSerializer(serializers.Serializer):
             return user
         raise serializers.ValidationError("Invalid Details.")
 
+
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Organization
         fields = '__all__'
-
-

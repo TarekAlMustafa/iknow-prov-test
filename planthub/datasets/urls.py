@@ -1,6 +1,6 @@
 from django.urls.conf import path
 
-from planthub.datasets.views import download_metadata, download_data
+from planthub.datasets.views import download_data, download_metadata
 
 # url pattern for dataset queries
 app_name = "datasets"
