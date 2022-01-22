@@ -64,6 +64,13 @@ pytest_3_10:
 coverage:
   stage: test
   image: python:3.9
+
+  variables:
+    DATABASE_URL: 'sqlite:////test_db.sqlite3'
+
+  before_script:
+    - pip install -r requirements/local.txt
+    
   script:
     - pip install pytest pytest-cov
     - coverage run -m pytest 
