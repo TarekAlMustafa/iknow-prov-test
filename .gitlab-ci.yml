@@ -60,7 +60,7 @@ pytest_3_9:
       junit: report.xml
 
 
-pytest_3_10:
+pytest_3_10_coverage:
   stage: test
   image: python:3.10
 
@@ -88,27 +88,13 @@ pytest_3_10:
 
   script:
     - pytest --junitxml=report.xml
-  artifacts:
-    when: always
-    reports:
-      junit: report.xml
-
-coverage:
-  stage: test
-  image: python:3.9
-
-  variables:
-    DATABASE_URL: 'sqlite:////test_db.sqlite3'
-
-  before_script:
-    - pip install -r requirements/local.txt
-    
-  script:
     - pip install pytest pytest-cov
     - coverage run -m pytest 
     - coverage report
     - coverage xml
   artifacts:
+    when: always
     reports:
+      junit: report.xml
       cobertura: coverage.xml
 
