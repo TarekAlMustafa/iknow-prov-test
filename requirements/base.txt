@@ -14,12 +14,18 @@ semantic-version==2.8.5
 # Django
 # ------------------------------------------------------------------------------
 django==3.1.13  # pyup: < 3.2  # https://www.djangoproject.com/
-django-environ==0.4.5  # https://github.com/joke2k/django-environ
-django-model-utils==4.1.1  # https://github.com/jazzband/django-model-utils
-django-allauth==0.45.0  # https://github.com/pennersr/django-allauth
-django-crispy-forms==1.12.0  # https://github.com/django-crispy-forms/django-crispy-forms
-django-redis==5.0.0  # https://github.com/jazzband/django-redis
+django-environ==0.8.1  # https://github.com/joke2k/django-environ
+django-model-utils==4.2.0  # https://github.com/jazzband/django-model-utils
+django-allauth==0.47.0  # https://github.com/pennersr/django-allauth
+django-crispy-forms==1.13.0  # https://github.com/django-crispy-forms/django-crispy-forms
+django-redis==5.2.0  # https://github.com/jazzband/django-redis
 # Django REST Framework
-djangorestframework==3.12.4  # https://github.com/encode/django-rest-framework
-django-cors-headers==3.7.0 # https://github.com/adamchainz/django-cors-headers
+djangorestframework==3.13.1  # https://github.com/encode/django-rest-framework
+django-cors-headers==3.10.1 # https://github.com/adamchainz/django-cors-headers
 django-rest-knox==4.1.0 # https://github.com/James1345/django-rest-knox
+
+# Django Dash
+django-plotly-dash==1.6.6
+colorcet==3.0.0
+xarray==2022.3.0
+netCDF4==1.5.8
