@@ -20,7 +20,11 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     # Datasets api
     path('datasets/', include('planthub.datasets.urls', namespace="datasets")),
+        path('viz/', include('planthub.viz.urls', namespace="viz")),
+          path("django_plotly_dash/", include("django_plotly_dash.urls")),
+        
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
 if settings.DEBUG:
     # Static file serving when using Gunicorn + Uvicorn for local web socket development
     urlpatterns += staticfiles_urlpatterns()

@@ -40,17 +40,8 @@ LOCALE_PATHS = [str(ROOT_DIR / "locale")]
 # DATABASES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
-# DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES = {
-    'default': {
-
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'planthub',
-        'USER': 'postgres',
-        'PASSWORD': 'PASSWORD',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    "default": env.db("DATABASE_URL2")
 }
 
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
@@ -89,6 +80,8 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "planthub.users.apps.UsersConfig",
     "planthub.datasets.apps.DatasetsConfig",
+     "planthub.viz.apps.VizConfig" ,
+      'django_plotly_dash.apps.DjangoPlotlyDashConfig',
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -223,7 +216,7 @@ CSRF_COOKIE_HTTPONLY = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-browser-xss-filter
 SECURE_BROWSER_XSS_FILTER = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
-X_FRAME_OPTIONS = "DENY"
+#X_FRAME_OPTIONS = "DENY"
 
 # EMAIL
 # ------------------------------------------------------------------------------
@@ -304,3 +297,6 @@ CORS_URLS_REGEX = r"^/(api|users|datasets)/.*$"
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
+
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'

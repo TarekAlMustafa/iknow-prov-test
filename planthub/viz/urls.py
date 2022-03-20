@@ -1,6 +1,7 @@
 from django.urls import path, include
 from . import views
 
+app_name = 'viz'
 urlpatterns = [
     path('',views.choose_plot,name='choose_plot'),
     path('pie', views.pie, name='pie'),
