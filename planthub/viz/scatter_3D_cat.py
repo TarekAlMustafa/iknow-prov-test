@@ -60,11 +60,9 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan):
 
 
 app.layout = html.Div(children=[
-   #html.H1(children=[
-   #     'Number of values: ',
-   #     html.Div(id='ticker_header', style={'display': 'inline'}),
-   #
-   # ]),
+   html.H1(children=[
+        '3D Scatter plot (coloring according to categories)',  
+    ]),
     html.Div([
         "Choose dataset:",
         dcc.RadioItems(

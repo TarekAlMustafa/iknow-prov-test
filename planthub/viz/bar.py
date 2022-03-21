@@ -10,6 +10,11 @@ from .read_data import data_frames, continuous_columns, cat_columns, dataframe_o
 
 app = DjangoDash('bar')
 
+colors = {
+    'background': '#111111',
+    'text': 'rgba(0, 0, 0, .7)'
+}
+
 
 def create_bar_chart(name_of_data_frame, category='TRY_Growth form 2', category2='None', show_nan=True
                      ):
@@ -40,7 +45,14 @@ def create_bar_chart(name_of_data_frame, category='TRY_Growth form 2', category2
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Hello Dash'),
+    html.H1(children='Bar chart',
+        style={
+            'textAlign': 'center',
+            'color': colors['text'],
+            'font-weight': '400',
+            'font-familiy': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;',
+        }   
+    ),
 
     html.Div([
         "Choose dataset:",

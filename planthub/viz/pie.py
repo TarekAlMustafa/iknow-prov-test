@@ -70,7 +70,7 @@ def create_pie_chart(name_of_data_frame, cat, show_unknown):
 
 
 app.layout = html.Div(children=[
-  #  html.H1(children='Pie chart'),
+    html.H1(children='Pie chart'),
 
     html.Div([
         "Choose dataset:",
