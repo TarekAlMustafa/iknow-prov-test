@@ -3,31 +3,33 @@ import xarray as xr
 import netCDF4
 
 
+path = "/var/www/PlantHub/planthub/planthub/viz/"
 
 data_frames = {
-   # 'TRY': pd.read_pickle('viz/TRY.pickle'),
-    'PhenObs': pd.read_pickle('viz/PhenObs.pickle'),
-    'TRY_Species': pd.read_pickle('viz/TRY_Species.pickle'),
-    'PhenObs_Species': pd.read_pickle('viz/PhenObs_Species.pickle')
+    'TRY': pd.read_pickle(path + 'TRY.pickle'),
+    'PhenObs': pd.read_pickle(path + 'PhenObs.pickle'),
+    'TRY_Species': pd.read_pickle(path + 'TRY_Species.pickle'),
+    'PhenObs_Species': pd.read_pickle(path + 'PhenObs_Species.pickle')
 }
 
-dataframe_options = [{'label': i, 'value': i} for i in data_frames]
+
+dataframe_options = [{'label': i.replace("_", " "), 'value': i} for i in data_frames]
 
 xy_crossings = {}
 for df in data_frames:
-    with xr.open_dataarray(f'viz/{df}_xy.nc') as da:
+    with xr.open_dataarray(f'{path}{df}_xy.nc') as da:
         da.load()
     xy_crossings[df] = da
 
 xyz_crossings = {}
 for df in data_frames:
-    with xr.open_dataarray(f'viz/{df}_xyz.nc') as da:
+    with xr.open_dataarray(f'{path}{df}_xyz.nc') as da:
         da.load()
     xyz_crossings[df] = da
 
 xyzw_crossings = {}
 for df in data_frames:
-    with xr.open_dataarray(f'viz/{df}_xyzw.nc') as da:
+    with xr.open_dataarray(f'{path}{df}_xyzw.nc') as da:
         da.load()
     xyzw_crossings[df] = da
 

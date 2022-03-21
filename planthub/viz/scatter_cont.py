@@ -9,9 +9,9 @@ from .read_data import data_frames, continuous_columns, cat_columns, get_valid_s
     dataframe_options
 
 app = DjangoDash('scatter_cont')
+app.css.append_css({"external_url": "/static/css/dashstyle.css"})
 
-
-def create_scatter_plot(name_of_data_frame, x, y, color, show_nan=True):
+def create_scatter_plot(name_of_data_frame, x, y, color,  log_x, log_y, show_nan=True):
     """
 
     :param name_of_data_frame:
@@ -43,19 +43,23 @@ def create_scatter_plot(name_of_data_frame, x, y, color, show_nan=True):
     if len(helper_df) == 0:
         # This cannot happen thanks to callbacks. But let's be sure
         kwargs['title'] = 'No datapoints for the requested combination of x-axes and y-axes'
-    return px.scatter(helper_df, x=x, y=y, hover_name='AccSpeciesName', **kwargs)
+    return px.scatter(helper_df, x=x, y=y, hover_name='AccSpeciesName', log_y=log_y, log_x=log_x,  **kwargs)
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Scatter plot (coloring using continuous quantity)'),
+    html.H1(children='Scatter plot (coloring using continuous quantity)', className="header-title"),
     html.Div([
-        "Choose dataset:",
+        "Dataset",
+
         dcc.RadioItems(
             id='dataframe',
             options=dataframe_options,
             value='TRY',
-        )
-    ]),
+            className="radio-items",
+            labelClassName="radio-label"
+        ),
+
+    ], className="radio"),
 
     html.Div([
         "x-axis:",
@@ -63,16 +67,48 @@ app.layout = html.Div(children=[
             id='x-axis',
             # options=[{'label': i, 'value': i} for i in continuous],
             # value='TRY_Leaf carbon (C) isotope signature (delta 13C)',
+            searchable=True,
+            className="dropdown-list"
         ),
-    ]),
+    ],
+        className="dropdown"),
+    html.Div([
+        dcc.Checklist(
+            id='show_log_x',
+            options=[
+                {'label': "Log scale",
+                 'value': 'show_log_x'},
+            ],
+            value=[],
+            inputClassName="checklist-input"
+        )
+    ],
+        className="checklist-log"
+    ),
     html.Div([
         "y-axis:",
         dcc.Dropdown(
             id='y-axis',
             # options=[{'label': i, 'value': i} for i in continuous],
             # value='TRY_Leaf carbon/nitrogen (C/N) ratio',
+            searchable=True,
+            className="dropdown-list"
         ),
-    ]),
+    ],
+        className="dropdown"),
+    html.Div([
+        dcc.Checklist(
+            id='show_log_y',
+            options=[
+                {'label': "Log scale",
+                 'value': 'show_log_y'},
+            ],
+            value=[],
+            inputClassName="checklist-input"
+        )
+    ],
+        className="checklist-log"
+    ),
     html.Div([
         "color:",
         dcc.Dropdown(
@@ -80,8 +116,11 @@ app.layout = html.Div(children=[
             # options will be created by callbacks at runtime instead of being hardcoded
             # options=[{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for i in continuous],
             value='None',
+            searchable=True,
+            className="dropdown-list"
         ),
-    ]),
+    ],
+        className="dropdown"),
     html.Div([
         dcc.Checklist(
             id='show_nan',
@@ -90,9 +129,12 @@ app.layout = html.Div(children=[
                           "gray)",
                  'value': 'show_nan'},
             ],
-            value=[]
+            value=[],
+            inputClassName="checklist-input"
         )
-    ]),
+    ],
+        className="checklist-log"
+    ),
     dcc.Loading(
         dcc.Graph(
             id='scatter_plot',
@@ -104,8 +146,8 @@ app.layout = html.Div(children=[
         type='cube',
     )
 
-])
-
+], className="container"
+)
 
 @app.callback(
     Output('x-axis', 'options'),
@@ -171,11 +213,23 @@ def filter_color_values(name_of_dataframe, x_col, y_col, old_value):
     Input('x-axis', 'value'),
     Input('y-axis', 'value'),
     Input('color-column', 'value'),
-    Input('show_nan', 'value'), )
+    Input('show_nan', 'value'),
+    Input('show_log_x', 'value'),
+    Input('show_log_y', 'value'),)
 def update_graph(name_of_data_frame, xaxis_column_name, yaxis_column_name,
-                 color_column_name, show_nan):
+                 color_column_name, show_nan, show_log_x, show_log_y):
     if show_nan == []:
         nan = False
     if show_nan == ['show_nan']:
         nan = True
-    return create_scatter_plot(name_of_data_frame, xaxis_column_name, yaxis_column_name, color_column_name, nan)
+
+    if show_log_x == []:
+        log_x = False
+    if show_log_x == ['show_log_x']:
+        log_x = True
+
+    if show_log_y == []:
+        log_y = False
+    if show_log_y == ['show_log_y']:
+        log_y = True
+    return create_scatter_plot(name_of_data_frame, xaxis_column_name, yaxis_column_name, color_column_name,  log_x, log_y, nan)

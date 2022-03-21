@@ -9,7 +9,7 @@ from .read_data import data_frames, cat_columns, continuous_columns, dataframe_o
 from django_plotly_dash import DjangoDash
 
 app = DjangoDash('pie')
-
+app.css.append_css({"external_url": "/static/css/dashstyle.css"})
 
 def create_pie_chart(name_of_data_frame, cat, show_unknown):
     """
@@ -70,16 +70,20 @@ def create_pie_chart(name_of_data_frame, cat, show_unknown):
 
 
 app.layout = html.Div(children=[
-    html.H1(children='Pie chart'),
+    html.H1(children='Pie chart', className="header-title"),
 
     html.Div([
-        "Choose dataset:",
+        "Dataset",
+
         dcc.RadioItems(
             id='dataframe',
             options=dataframe_options,
             value='TRY',
-        )
-    ]),
+            className="radio-items",
+            labelClassName="radio-label"
+        ),
+
+    ], className="radio"),
 
     html.Div([
         "Category",
@@ -89,17 +93,24 @@ app.layout = html.Div(children=[
             # instead of being hardcoded
             # options=[{'label': i, 'value': i} for i in discrete],
             # value='TRY_Growth form 2',
-        )],
-    ),
+            searchable=True,
+            className="dropdown-list"
+        ),
+    ],
+        className="dropdown"),
     html.Div([
         dcc.Checklist(
             id='show_nan',
             options=[
-                {'label': "Also take into account those plants where the category is unknown", 'value': 'show_nan'},
+                {'label': "Also take into account unknown (null) values", 'value': 'show_nan'},
             ],
-            value=[]
+            value=[],
+            inputClassName="checklist-input"
+
         )
-    ]),
+    ],
+        className="checklist"
+    ),
     dcc.Loading(
         dcc.Graph(
             id='bar_chart',
@@ -111,7 +122,8 @@ app.layout = html.Div(children=[
         type='default',
     )
 
-])
+], className="container"
+)
 
 
 @app.callback(

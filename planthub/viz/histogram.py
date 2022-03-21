@@ -9,7 +9,7 @@ from django_plotly_dash import DjangoDash
 from .read_data import data_frames, cat_columns, continuous_columns, dataframe_options
 
 app = DjangoDash('histogram')
-
+app.css.append_css({"external_url": "/static/css/dashstyle.css"})
 
 def create_histogram(name_of_dataframe, x, number_of_bins):
     """
@@ -34,16 +34,19 @@ def create_histogram(name_of_dataframe, x, number_of_bins):
 
 
 app.layout = html.Div([
-    html.H1(children='Histogram'),
-
+    html.H1(children='Histogram', className="header-title"),
     html.Div([
-        "Choose dataset:",
+        "Dataset",
+
         dcc.RadioItems(
             id='dataframe',
             options=dataframe_options,
             value='TRY',
-        )
-    ]),
+            className="radio-items",
+            labelClassName="radio-label"
+        ),
+
+    ], className="radio"),
     html.Div([
         "x-axis:",
         dcc.Dropdown(
@@ -52,8 +55,11 @@ app.layout = html.Div([
             # instead of being hardcoded
             # options=[{'label': i, 'value': i} for i in continuous],
             # value='TRY_Leaf carbon (C) isotope signature (delta 13C)',
+            searchable=True,
+            className="dropdown-list"
         ),
-    ]),
+    ],
+        className="dropdown"),
     html.Div([
         "Number of bins:",
         dcc.Slider(
@@ -76,7 +82,8 @@ app.layout = html.Div([
         type='cube',
     )
 
-])
+], className="container"
+)
 
 
 @app.callback(

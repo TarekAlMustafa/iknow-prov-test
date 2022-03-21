@@ -9,7 +9,7 @@ from django_plotly_dash import DjangoDash
 from .read_data import data_frames, continuous_columns, cat_columns, get_valid_second_column, dataframe_options
 
 app = DjangoDash('violin')
-
+app.css.append_css({"external_url": "/static/css/dashstyle.css"})
 
 def create_violin(name_of_dataframe, density, category, show_range):
     """Creates a plotly violin_view plot
@@ -37,15 +37,19 @@ def create_violin(name_of_dataframe, density, category, show_range):
 
 
 app.layout = html.Div([
-    html.H1(children='Violin Plot'),
+    html.H1(children='Violin Plot', className="header-title"),
     html.Div([
-        "Choose dataset:",
+        "Dataset",
+
         dcc.RadioItems(
             id='dataframe',
             options=dataframe_options,
             value='TRY',
-        )
-    ]),
+            className="radio-items",
+            labelClassName="radio-label"
+        ),
+
+    ], className="radio"),
     html.Div([
         "Density of:",
         dcc.Dropdown(
@@ -54,8 +58,11 @@ app.layout = html.Div([
             # instead of being hardcoded
             # options=[{'label': i, 'value': i} for i in continuous],
             # value='TRY_Leaf carbon (C) isotope signature (delta 13C)',
+            searchable=True,
+            className="dropdown-list"
         ),
-    ]),
+    ],
+        className="dropdown"),
     html.Div([
         "Category",
         dcc.Dropdown(
@@ -64,8 +71,11 @@ app.layout = html.Div([
             # instead of being hardcoded
             # options=[{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for i in discrete],
             # value='None',
+            searchable=True,
+            className="dropdown-list"
         ),
-    ]),
+    ],
+        className="dropdown"),
     html.Div([
         "Show only range of",
         dcc.RangeSlider(
@@ -85,7 +95,8 @@ app.layout = html.Div([
         debug=True,
         type='cube',
     )
-])
+], className="container"
+)
 
 
 @app.callback(

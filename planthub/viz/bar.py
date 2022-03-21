@@ -7,13 +7,10 @@ from dash.dependencies import Input, Output, State
 from django_plotly_dash import DjangoDash
 
 from .read_data import data_frames, continuous_columns, cat_columns, dataframe_options, get_valid_second_column
+from .style import style
 
 app = DjangoDash('bar')
-
-colors = {
-    'background': '#111111',
-    'text': 'rgba(0, 0, 0, .7)'
-}
+app.css.append_css({"external_url": "/static/css/dashstyle.css"})
 
 
 def create_bar_chart(name_of_data_frame, category='TRY_Growth form 2', category2='None', show_nan=True
@@ -46,22 +43,21 @@ def create_bar_chart(name_of_data_frame, category='TRY_Growth form 2', category2
 
 app.layout = html.Div(children=[
     html.H1(children='Bar chart',
-        style={
-            'textAlign': 'center',
-            'color': colors['text'],
-            'font-weight': '400',
-            'font-familiy': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;',
-        }   
-    ),
+            className="header-title"
+            ),
 
     html.Div([
-        "Choose dataset:",
+        "Dataset",
+
         dcc.RadioItems(
             id='dataframe',
             options=dataframe_options,
             value='TRY',
-        )
-    ]),
+            className="radio-items",
+            labelClassName="radio-label"
+        ),
+
+    ], className="radio"),
     html.Div([
         html.Div([
             "Category",
@@ -71,28 +67,39 @@ app.layout = html.Div(children=[
                 # instead of being hardcoded
                 # options=[{'label': i, 'value': i} for i in discrete],
                 # value='TRY_Growth form 2',
+                searchable=True,
+                className="dropdown-list"
             ),
-        ]),
+        ],
+            className="dropdown"),
         html.Div([
-            "Second category",
+            "Second category (stacked bar chart)",
             dcc.Dropdown(
                 id='cat2',
                 # Possible options and value are determined in first callback update_possible_categories
                 # instead of being hardcoded
                 # options=[{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for i in discrete],
                 # value='None',
+                searchable=True,
+                className="dropdown-list"
             ),
-        ]),
+        ],
+            className="dropdown"
+        ),
 
         html.Div([
             dcc.Checklist(
                 id='show_nan',
                 options=[
-                    {'label': "Also take into account those plants where the category is unknown", 'value': 'show_nan'},
+                    {'label': "Also take into account unknown (null) values", 'value': 'show_nan'},
                 ],
-                value=[]
+                value=[],
+                inputClassName="checklist-input"
+
             )
-        ])
+        ],
+            className="checklist"
+        )
 
     ], ),
     dcc.Loading(
@@ -104,9 +111,11 @@ app.layout = html.Div(children=[
         ),
         debug=True,
         type='cube',
+
     )
 
-])
+], className="container"
+)
 
 
 # Whenever the chosen dataframe is changed, the possible categories have to be updated

@@ -12,9 +12,10 @@ from .read_data import data_frames, continuous_columns, cat_columns, get_valid_t
     get_valid_fourth_column, dataframe_options
 
 app = DjangoDash('scatter_3D_cat')
+app.css.append_css({"external_url": "/static/css/dashstyle.css"})
 
 
-def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan):
+def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan, log_x, log_y, log_z):
     """
 
     :param name_of_data_frame:
@@ -23,6 +24,9 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan):
     :param z: Name of column for z-coordinate
     :param color: Name of categorical column for coloring the points (or 'None' if no coloring is desired)
     :param show_nan: Also show points for which the category is unknown (in case color!='None')
+    :param log_x: Log scale for x-coordinate
+    :param log_y: Log scale for y-coordinate
+    :param log_z: Log scale for z-coordinate
     :return:
     """
     # We need to do it this complicated way because the naive plotly-ways is too slow for datasets of this size.
@@ -54,63 +58,114 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan):
         kwargs['title'] = f'Too many points to show in a browser. You only see a sample of 20000 out of {size} points'
     if len(helper_df) == 0:
         # This is unlikely to happen thanks to callbacks
-        kwargs['title'] = 'No datapoints for the requested combination of x- y- and z-axis. Maybe checking "Show ' \
+        kwargs['title'] = 'No data points for the requested combination of x- y- and z-axis. Maybe checking "Show ' \
                           'unknown values" will help '
-    return px.scatter_3d(helper_df, x=x, y=y, z=z, hover_name='AccSpeciesName', **kwargs)
+    return px.scatter_3d(helper_df, x=x, y=y, z=z, hover_name='AccSpeciesName', log_z=log_z, log_y=log_y, log_x=log_x, **kwargs)
 
 
 app.layout = html.Div(children=[
-   html.H1(children=[
-        '3D Scatter plot (coloring according to categories)',  
-    ]),
+    html.H1(children='3D Scatter plot (coloring according to categories)', className="header-title"),
     html.Div([
-        "Choose dataset:",
+        "Dataset",
+
         dcc.RadioItems(
             id='dataframe',
             options=dataframe_options,
             value='TRY',
-        )
-    ]),
+            className="radio-items",
+            labelClassName="radio-label"
+        ),
+
+    ], className="radio"),
     html.Div([
         html.Div([
-            "x-axis:",
+            "X-axis",
             dcc.Dropdown(
                 id='x-axis',
-
+                searchable=True,
+                className="dropdown-list"
             ),
-        ]),
+        ],
+            className="dropdown"),
         html.Div([
-            "y-axis:",
+            dcc.Checklist(
+                id='show_log_x',
+                options=[
+                    {'label': "Log scale",
+                     'value': 'show_log_x'},
+                ],
+                value=[],
+                inputClassName="checklist-input"
+            )
+        ],
+            className="checklist-log"
+        ),
+        html.Div([
+            "Y-axis",
             dcc.Dropdown(
                 id='y-axis',
-
+                searchable=True,
+                className="dropdown-list"
             ),
-        ]),
+        ],
+            className="dropdown"),
         html.Div([
-            "z-axis:",
+            dcc.Checklist(
+                id='show_log_y',
+                options=[
+                    {'label': "Log scale",
+                     'value': 'show_log_y'},
+                ],
+                value=[],
+                inputClassName="checklist-input"
+            )
+        ],
+            className="checklist-log"
+        ),
+        html.Div([
+            "Z-axis",
             dcc.Dropdown(
                 id='z-axis',
-
+                searchable=True,
+                className="dropdown-list"
             ),
-        ]),
-
+        ],
+            className="dropdown"),
         html.Div([
-            "color:",
+            dcc.Checklist(
+                id='show_log_z',
+                options=[
+                    {'label': "Log scale",
+                     'value': 'show_log_z'},
+                ],
+                value=[],
+                inputClassName="checklist-input"
+            )
+        ],
+            className="checklist-log"
+        ),
+        html.Div([
+            "Color",
             dcc.Dropdown(
                 id='color-column',
-
+                searchable=True,
+                className="dropdown-list"
             ),
-        ]),
+        ],
+            className="dropdown"),
         html.Div([
             dcc.Checklist(
                 id='show_nan',
                 options=[
-                    {'label': "Show plants for which the value of the chosen color-column is not known",
+                    {'label': "Show value of the chosen color-column is not known",
                      'value': 'show_nan'},
                 ],
-                value=[]
+                value=[],
+                inputClassName="checklist-input"
             )
-        ]),
+        ],
+            className="checklist-log"
+        ),
     ],
 
     ),
@@ -125,7 +180,8 @@ app.layout = html.Div(children=[
         type='cube',
     )
 
-])
+], className="container"
+)
 
 
 @app.callback(
@@ -213,12 +269,31 @@ def filter_color_cats(name_of_dataframe, x_col, y_col, z_col, old_value):
     Input('z-axis', 'value'),
     Input('color-column', 'value'),
     Input('show_nan', 'value'),
+    Input('show_log_x', 'value'),
+    Input('show_log_y', 'value'),
+    Input('show_log_z', 'value'),
 )
 def update_graph(name_of_data_frame, xaxis_column_name, yaxis_column_name, zaxis_column_name,
-                 color_column_name, show_nan):
+                 color_column_name, show_nan, show_log_x, show_log_y, show_log_z):
     if show_nan == []:
         nan = False
     if show_nan == ['show_nan']:
         nan = True
+
+    if show_log_x == []:
+        log_x = False
+    if show_log_x == ['show_log_x']:
+        log_x = True
+
+    if show_log_y == []:
+        log_y = False
+    if show_log_y == ['show_log_y']:
+        log_y = True
+
+    if show_log_z == []:
+        log_z = False
+    if show_log_z == ['show_log_z']:
+        log_z = True
+
     return create_scatter_plot(name_of_data_frame, xaxis_column_name, yaxis_column_name, zaxis_column_name,
-                               color_column_name, nan)
+                               color_column_name, nan, log_x, log_y, log_z)
