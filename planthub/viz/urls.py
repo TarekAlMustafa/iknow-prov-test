@@ -10,6 +10,7 @@ urlpatterns = [
     path('scatter_cat', views.scatter_cat, name='scatter_cat'),
     path('scatter_cont', views.scatter_cont, name='scatter_cont'),
     path('scatter_3D_cat', views.scatter_3D_cat, name='scatter_3D_cat'),
+    path('scatter_matrix_cat', views.scatter_3D_cat, name='scatter_matrix_cat'),
     path('histogram',views.histogram,name='histogram'),
 
 ]
