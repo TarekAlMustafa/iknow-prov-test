@@ -1,19 +1,23 @@
 import pandas as pd
 import xarray as xr
-import netCDF4
+
+from django.conf import settings
+
+path = str(settings.APPS_DIR) + "/viz/"
 
 
-path = "/var/www/PlantHub/planthub/planthub/viz/"
+# TODO: This list should come in the future from the database
+datasets = ['TRY', 'PhenObs', 'TRY_Species', 'PhenObs_Species']
 
-data_frames = {
-    'TRY': pd.read_pickle(path + 'TRY.pickle'),
-    'PhenObs': pd.read_pickle(path + 'PhenObs.pickle'),
-    'TRY_Species': pd.read_pickle(path + 'TRY_Species.pickle'),
-    'PhenObs_Species': pd.read_pickle(path + 'PhenObs_Species.pickle')
-}
-
+data_frames = {}
+for item in datasets:
+    try:
+        data_frames[item] = pd.read_pickle(path + item + '.pickle')
+    except FileNotFoundError:
+        print( item + " not found.")
 
 dataframe_options = [{'label': i.replace("_", " "), 'value': i} for i in data_frames]
+
 
 xy_crossings = {}
 for df in data_frames:

@@ -300,3 +300,6 @@ CORS_ALLOWED_ORIGINS = [
 
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
+
+# Static path on Server. Django settings parameter did not show the expected result.
+STATIC_URL_PREFIX = ""
