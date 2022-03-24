@@ -7,7 +7,7 @@ from dash.dependencies import Input, Output, State
 from django_plotly_dash import DjangoDash
 from django.conf import settings
 from .read_data import data_frames, continuous_columns, cat_columns, dataframe_options, get_valid_second_column
-from .style import style
+
 
 app = DjangoDash('bar')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
