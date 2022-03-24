@@ -30,3 +30,4 @@ colorcet==3.0.0
 xarray==2022.3.0
 netCDF4==1.5.8
 dash[testing]
+markupsafe == 2.0.1
