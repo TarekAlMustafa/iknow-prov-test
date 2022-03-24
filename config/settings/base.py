@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 Base settings to build other settings files upon.
 """

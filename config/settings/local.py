@@ -1,3 +1,4 @@
+# flake8: noqa
 from .base import *  # noqa
 from .base import env
 
@@ -12,7 +13,7 @@ SECRET_KEY = env(
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "10.149.0.38", "iknow.inf-bb.uni-jena.de"]
-DATABASES["default"] = env.db("DATABASE_URL2", default="postgres://postgres:\"QazxswedC123!\"@127.0.0.1:5432/planthub")
+DATABASES["default"] = env.db("DATABASE_URL2", default="postgres://postgres:\"\"@127.0.0.1:5432/planthub")
 
 # CACHES
 # ------------------------------------------------------------------------------

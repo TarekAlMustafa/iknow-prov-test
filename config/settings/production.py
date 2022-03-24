@@ -1,3 +1,4 @@
+# flake8: noqa
 from .base import *  # noqa
 from .base import env
 
@@ -14,11 +15,10 @@ ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "10.149.0.38", "iknow.inf-
 
 # DATABASES
 # ------------------------------------------------------------------------------
-#DATABASES["default"] = env.db("DATABASE_URL")  # noqa F405
-DATABASES["default"] = env.db("DATABASE_URL2", default="postgres://postgres:QazxswedC123!@127.0.0.1:5432/planthub")
+# DATABASES["default"] = env.db("DATABASE_URL")  # noqa F405
+DATABASES["default"] = env.db("DATABASE_URL2", default="postgres://postgres:@127.0.0.1:5432/planthub")
 DATABASES["default"]["ATOMIC_REQUESTS"] = True  # noqa F405
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # noqa F405
-
 
 # CACHES
 # ------------------------------------------------------------------------------
@@ -26,25 +26,25 @@ DATABASES["default"]["CONN_MAX_AGE"] = env.int("CONN_MAX_AGE", default=60)  # no
 #    "default": {
 #        "BACKEND": "django_redis.cache.RedisCache",
 #        "LOCATION": env("REDIS_URL"),
- #       "OPTIONS": {
+#       "OPTIONS": {
 #            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            # Mimicing memcache behavior.
-            # https://github.com/jazzband/django-redis#memcached-exceptions-behavior
- #           "IGNORE_EXCEPTIONS": True,
- #       },
- #   }
-#}
+# Mimicing memcache behavior.
+# https://github.com/jazzband/django-redis#memcached-exceptions-behavior
+#           "IGNORE_EXCEPTIONS": True,
+#       },
+#   }
+# }
 
 # SECURITY
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-proxy-ssl-header
-#SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-ssl-redirect
 SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
 # https://docs.djangoproject.com/en/dev/ref/settings/#session-cookie-secure
-#SESSION_COOKIE_SECURE = True
+# SESSION_COOKIE_SECURE = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-secure
-#CSRF_COOKIE_SECURE = True
+# CSRF_COOKIE_SECURE = True
 # https://docs.djangoproject.com/en/dev/topics/security/#ssl-https
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-seconds
 # TODO: set this to 60 seconds first and then to 518400 once you prove the former works
@@ -60,10 +60,9 @@ SECURE_CONTENT_TYPE_NOSNIFF = env.bool(
     "DJANGO_SECURE_CONTENT_TYPE_NOSNIFF", default=True
 )
 
-
 # STATIC
 # ------------------------
-#STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 # STATIC
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#static-root
@@ -110,17 +109,17 @@ EMAIL_SUBJECT_PREFIX = env(
 # ADMIN
 # ------------------------------------------------------------------------------
 # Django Admin URL regex.
-#ADMIN_URL = env("DJANGO_ADMIN_URL")
+# ADMIN_URL = env("DJANGO_ADMIN_URL")
 
 # Anymail
 # ------------------------------------------------------------------------------
 # https://anymail.readthedocs.io/en/stable/installation/#installing-anymail
-#INSTALLED_APPS += ["anymail"]  # noqa F405
+# INSTALLED_APPS += ["anymail"]  # noqa F405
 # https://docs.djangoproject.com/en/dev/ref/settings/#email-backend
 # https://anymail.readthedocs.io/en/stable/installation/#anymail-settings-reference
 # https://anymail.readthedocs.io/en/stable/esps
-#EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-#ANYMAIL = {}
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# ANYMAIL = {}
 
 
 # LOGGING
@@ -138,7 +137,7 @@ LOGGING = {
     "formatters": {
         "verbose": {
             "format": "%(levelname)s %(asctime)s %(module)s "
-            "%(process)d %(thread)d %(message)s"
+                      "%(process)d %(thread)d %(message)s"
         }
     },
     "handlers": {
@@ -174,4 +173,3 @@ LOGGING = {
 
 # Static path on Server. Django settings parameter did not show the expected result.
 STATIC_URL_PREFIX = "/backend"
-      
