@@ -301,5 +301,10 @@ CORS_ALLOWED_ORIGINS = [
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
+
+# BLAZEGRAPH Settings
+BLAZEGRAPH_URL = 'http://localhost:8889/'
+
 # Static path on Server. Django settings parameter did not show the expected result.
 STATIC_URL_PREFIX = ""
+
