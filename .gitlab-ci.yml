@@ -33,7 +33,7 @@ pytest:
  # tags:
  #   - python
   variables:
-    DATABASE_URL: 'sqlite:////test_db.sqlite3'
+    DATABASE_URL2: 'sqlite:////test_db.sqlite3'
 
   before_script:
 
