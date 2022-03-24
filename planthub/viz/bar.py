@@ -5,12 +5,12 @@ import plotly.express as px
 import colorcet as cc
 from dash.dependencies import Input, Output, State
 from django_plotly_dash import DjangoDash
-
+from django.conf import settings
 from .read_data import data_frames, continuous_columns, cat_columns, dataframe_options, get_valid_second_column
 from .style import style
 
 app = DjangoDash('bar')
-app.css.append_css({"external_url": "/static/css/dashstyle.css"})
+app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
 
 
 def create_bar_chart(name_of_data_frame, category='TRY_Growth form 2', category2='None', show_nan=True

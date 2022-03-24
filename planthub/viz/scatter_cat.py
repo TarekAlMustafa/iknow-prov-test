@@ -5,14 +5,14 @@ import plotly.express as px
 import pandas as pd
 import colorcet as cc
 from dash.dependencies import Input, Output, State
-
+from django.conf import settings
 from django_plotly_dash import DjangoDash
 
 from .read_data import data_frames, continuous_columns, cat_columns, xy_crossings, xyz_crossings, \
     get_valid_second_column, get_valid_third_column, dataframe_options
 
 app = DjangoDash('scatter_cat')
-app.css.append_css({"external_url": "/static/css/dashstyle.css"})
+app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
 
 def create_scatter_plot(name_of_data_frame, x, y, color, log_x, log_y):
     """Creates a two-dim scatter-plot

@@ -5,11 +5,12 @@ import plotly.express as px
 import numpy as np
 from dash.dependencies import Input, Output, State
 from django_plotly_dash import DjangoDash
+from django.conf import settings
 
 from .read_data import data_frames, cat_columns, continuous_columns, dataframe_options
 
 app = DjangoDash('histogram')
-app.css.append_css({"external_url": "/static/css/dashstyle.css"})
+app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
 
 def create_histogram(name_of_dataframe, x, number_of_bins):
     """

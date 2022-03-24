@@ -7,9 +7,10 @@ import colorcet as cc
 from dash.dependencies import Input, Output, State
 from .read_data import data_frames, cat_columns, continuous_columns, dataframe_options
 from django_plotly_dash import DjangoDash
+from django.conf import settings
 
 app = DjangoDash('pie')
-app.css.append_css({"external_url": "/static/css/dashstyle.css"})
+app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
 
 def create_pie_chart(name_of_data_frame, cat, show_unknown):
     """
