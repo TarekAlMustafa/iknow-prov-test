@@ -1,16 +1,17 @@
-import dash
+import colorcet as cc
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.express as px
-import colorcet as cc
 from dash.dependencies import Input, Output, State
-from .read_data import data_frames, cat_columns, continuous_columns, dataframe_options
-from django_plotly_dash import DjangoDash
 from django.conf import settings
+from django_plotly_dash import DjangoDash
+
+from .read_data import cat_columns, data_frames, dataframe_options
 
 app = DjangoDash('pie')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
+
 
 def create_pie_chart(name_of_data_frame, cat, show_unknown):
     """

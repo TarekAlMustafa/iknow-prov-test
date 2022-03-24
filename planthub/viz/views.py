@@ -1,6 +1,16 @@
+# flake8: noqa
 from django.shortcuts import render
-from . import pie, bar, violin, scatter_cat, scatter_cont, scatter_3D_cat, histogram, scatter_matrix_cat
 
+from . import (
+    bar,
+    histogram,
+    pie,
+    scatter_3D_cat,
+    scatter_cat,
+    scatter_cont,
+    scatter_matrix_cat,
+    violin,
+) # this import is needed, so keep it!
 
 # Create your views here.
 
@@ -28,8 +38,10 @@ def scatter_cont(request):
 def scatter_3D_cat(request):
     return render(request, 'viz/scatter_3D_cat.html')
 
+
 def scatter_matrix_cat(request):
     return render(request, 'viz/scatter_matrix_cat.html')
+
 
 def histogram(request):
     return render(request, 'viz/histogram.html')

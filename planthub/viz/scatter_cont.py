@@ -1,18 +1,23 @@
-import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
 from dash.dependencies import Input, Output, State
-from django_plotly_dash import DjangoDash
 from django.conf import settings
+from django_plotly_dash import DjangoDash
 
-from .read_data import data_frames, continuous_columns, cat_columns, get_valid_second_column, get_valid_third_column, \
-    dataframe_options
+from .read_data import (
+    continuous_columns,
+    data_frames,
+    dataframe_options,
+    get_valid_second_column,
+    get_valid_third_column,
+)
 
 app = DjangoDash('scatter_cont')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
 
-def create_scatter_plot(name_of_data_frame, x, y, color,  log_x, log_y, show_nan=True):
+
+def create_scatter_plot(name_of_data_frame, x, y, color, log_x, log_y, show_nan=True):
     """
 
     :param name_of_data_frame:
@@ -44,7 +49,7 @@ def create_scatter_plot(name_of_data_frame, x, y, color,  log_x, log_y, show_nan
     if len(helper_df) == 0:
         # This cannot happen thanks to callbacks. But let's be sure
         kwargs['title'] = 'No datapoints for the requested combination of x-axes and y-axes'
-    return px.scatter(helper_df, x=x, y=y, hover_name='AccSpeciesName', log_y=log_y, log_x=log_x,  **kwargs)
+    return px.scatter(helper_df, x=x, y=y, hover_name='AccSpeciesName', log_y=log_y, log_x=log_x, **kwargs)
 
 
 app.layout = html.Div(children=[
@@ -150,6 +155,7 @@ app.layout = html.Div(children=[
 ], className="container"
 )
 
+
 @app.callback(
     Output('x-axis', 'options'),
     Output('x-axis', 'value'),
@@ -216,7 +222,7 @@ def filter_color_values(name_of_dataframe, x_col, y_col, old_value):
     Input('color-column', 'value'),
     Input('show_nan', 'value'),
     Input('show_log_x', 'value'),
-    Input('show_log_y', 'value'),)
+    Input('show_log_y', 'value'), )
 def update_graph(name_of_data_frame, xaxis_column_name, yaxis_column_name,
                  color_column_name, show_nan, show_log_x, show_log_y):
     if show_nan == []:
@@ -233,4 +239,5 @@ def update_graph(name_of_data_frame, xaxis_column_name, yaxis_column_name,
         log_y = False
     if show_log_y == ['show_log_y']:
         log_y = True
-    return create_scatter_plot(name_of_data_frame, xaxis_column_name, yaxis_column_name, color_column_name,  log_x, log_y, nan)
+    return create_scatter_plot(name_of_data_frame, xaxis_column_name, yaxis_column_name,
+                               color_column_name, log_x, log_y, nan)

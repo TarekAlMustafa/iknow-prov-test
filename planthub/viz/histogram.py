@@ -1,16 +1,16 @@
-import dash
 import dash_core_components as dcc
 import dash_html_components as html
-import plotly.express as px
 import numpy as np
+import plotly.express as px
 from dash.dependencies import Input, Output, State
-from django_plotly_dash import DjangoDash
 from django.conf import settings
+from django_plotly_dash import DjangoDash
 
-from .read_data import data_frames, cat_columns, continuous_columns, dataframe_options
+from .read_data import continuous_columns, data_frames, dataframe_options
 
 app = DjangoDash('histogram')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
+
 
 def create_histogram(name_of_dataframe, x, number_of_bins):
     """

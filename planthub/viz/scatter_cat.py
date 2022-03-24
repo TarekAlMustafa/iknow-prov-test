@@ -1,18 +1,23 @@
-import dash
+import colorcet as cc
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.express as px
-import pandas as pd
-import colorcet as cc
 from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .read_data import data_frames, continuous_columns, cat_columns, xy_crossings, xyz_crossings, \
-    get_valid_second_column, get_valid_third_column, dataframe_options
+from .read_data import (
+    cat_columns,
+    continuous_columns,
+    data_frames,
+    dataframe_options,
+    get_valid_second_column,
+    get_valid_third_column,
+)
 
 app = DjangoDash('scatter_cat')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
+
 
 def create_scatter_plot(name_of_data_frame, x, y, color, log_x, log_y):
     """Creates a two-dim scatter-plot
@@ -47,7 +52,7 @@ def create_scatter_plot(name_of_data_frame, x, y, color, log_x, log_y):
     if len(helper_df) == 0:
         # This cannot happen thanks to callbacks. But let's be sure
         kwargs['title'] = 'No datapoints for the requested combination of x-axes and y-axes'
-    return px.scatter(helper_df, x=x, y=y, hover_name='AccSpeciesName',  log_y=log_y, log_x=log_x, **kwargs)
+    return px.scatter(helper_df, x=x, y=y, hover_name='AccSpeciesName', log_y=log_y, log_x=log_x, **kwargs)
 
 
 app.layout = html.Div(children=[
@@ -225,7 +230,7 @@ def filter_color_cats(name_of_dataframe, x_col, y_col, old_value):
     Input('show_log_x', 'value'),
     Input('show_log_y', 'value'))
 def update_graph(name_of_dataframe, xaxis_column_name, yaxis_column_name,
-                 color_column_name,show_log_x, show_log_y):
+                 color_column_name, show_log_x, show_log_y):
     """Creates a new plot whenever the user (or a callback) changes any relevant parameter
 
     :param name_of_dataframe:

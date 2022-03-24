@@ -1,13 +1,18 @@
+import colorcet as cc
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.express as px
-import colorcet as cc
 from dash.dependencies import Input, Output, State
-from django_plotly_dash import DjangoDash
 from django.conf import settings
-from .read_data import data_frames, continuous_columns, cat_columns, dataframe_options, get_valid_second_column
+from django_plotly_dash import DjangoDash
 
+from .read_data import (
+    cat_columns,
+    data_frames,
+    dataframe_options,
+    get_valid_second_column,
+)
 
 app = DjangoDash('bar')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})

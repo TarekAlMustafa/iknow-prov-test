@@ -1,10 +1,8 @@
 import pandas as pd
 import xarray as xr
-
 from django.conf import settings
 
 path = str(settings.APPS_DIR) + "/viz/"
-
 
 # TODO: This list should come in the future from the database
 datasets = ['TRY', 'PhenObs', 'TRY_Species', 'PhenObs_Species']
@@ -14,10 +12,9 @@ for item in datasets:
     try:
         data_frames[item] = pd.read_pickle(path + item + '.pickle')
     except FileNotFoundError:
-        print( item + " not found.")
+        print(item + " not found.")
 
 dataframe_options = [{'label': i.replace("_", " "), 'value': i} for i in data_frames]
-
 
 xy_crossings = {}
 for df in data_frames:

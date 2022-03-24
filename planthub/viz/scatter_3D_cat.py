@@ -1,16 +1,21 @@
+import colorcet as cc
 import dash_core_components as dcc
 import dash_html_components as html
-import plotly.express as px
 import numpy as np
-import pandas as pd
-import colorcet as cc
-from dash import dash
+import plotly.express as px
 from dash.dependencies import Input, Output, State
-from django_plotly_dash import DjangoDash
 from django.conf import settings
+from django_plotly_dash import DjangoDash
 
-from .read_data import data_frames, continuous_columns, cat_columns, get_valid_third_column, get_valid_second_column, \
-    get_valid_fourth_column, dataframe_options
+from .read_data import (
+    cat_columns,
+    continuous_columns,
+    data_frames,
+    dataframe_options,
+    get_valid_fourth_column,
+    get_valid_second_column,
+    get_valid_third_column,
+)
 
 app = DjangoDash('scatter_3D_cat')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
@@ -61,7 +66,8 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan, log_x, log
         # This is unlikely to happen thanks to callbacks
         kwargs['title'] = 'No data points for the requested combination of x- y- and z-axis. Maybe checking "Show ' \
                           'unknown values" will help '
-    return px.scatter_3d(helper_df, x=x, y=y, z=z, hover_name='AccSpeciesName', log_z=log_z, log_y=log_y, log_x=log_x, **kwargs)
+    return px.scatter_3d(helper_df, x=x, y=y, z=z, hover_name='AccSpeciesName',
+                         log_z=log_z, log_y=log_y, log_x=log_x, **kwargs)
 
 
 app.layout = html.Div(children=[

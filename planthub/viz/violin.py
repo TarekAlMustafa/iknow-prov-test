@@ -1,25 +1,31 @@
-import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import numpy as np
 import plotly.express as px
 from dash.dependencies import Input, Output, State
-from django_plotly_dash import DjangoDash
 from django.conf import settings
+from django_plotly_dash import DjangoDash
 
-from .read_data import data_frames, continuous_columns, cat_columns, get_valid_second_column, dataframe_options
+from .read_data import (
+    cat_columns,
+    continuous_columns,
+    data_frames,
+    dataframe_options,
+    get_valid_second_column,
+)
 
 app = DjangoDash('violin')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
+
 
 def create_violin(name_of_dataframe, density, category, show_range):
     """Creates a plotly violin_view plot
 
     :param name_of_dataframe:
     :param density: Name of the column where to create a violin_view
-    :param category: Name of the column to use split data into categories: one violin_view plot per category will be plotted (if 'None' data will not be split)
-
-    :param show_range: Only show data within this range. Usefull to cut off outliers
+    :param category: Name of the column to use split data into categories: one violin_view plot
+    per category will be plotted (if 'None' data will not be split)
+    :param show_range: Only show data within this range. Useful to cut off outliers
     :return:
     """
     df = data_frames[name_of_dataframe]
