@@ -20,9 +20,11 @@ urlpatterns = [
     # Your stuff: custom urls includes go here
     # Datasets api
     path('datasets/', include('planthub.datasets.urls', namespace="datasets")),
-        path('viz/', include('planthub.viz.urls', namespace="viz")),
-          path("django_plotly_dash/", include("django_plotly_dash.urls")),
-        
+    path('viz/', include('planthub.viz.urls', namespace="viz")),
+    path("django_plotly_dash/", include("django_plotly_dash.urls")),
+    # Knowledge Graph query builder
+    path("kg_query/", include("planthub.kg_query.urls")),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
