@@ -6,7 +6,7 @@ from .base import *  # noqa
 from .base import env
 
 # Overwrite database settings
-DATABASES = {"default": env.db("DATABASE_URL")}
+DATABASES = {"default": env.db("DATABASE_URL2")}
 
 # GENERAL
 # ------------------------------------------------------------------------------
