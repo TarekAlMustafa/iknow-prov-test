@@ -5,11 +5,12 @@ import numpy as np
 import plotly.express as px
 from dash.dependencies import Input, Output, State
 from django_plotly_dash import DjangoDash
+from django.conf import settings
 
 from .read_data import data_frames, continuous_columns, cat_columns, get_valid_second_column, dataframe_options
 
 app = DjangoDash('violin')
-app.css.append_css({"external_url": "/static/css/dashstyle.css"})
+app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
 
 def create_violin(name_of_dataframe, density, category, show_range):
     """Creates a plotly violin_view plot

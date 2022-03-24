@@ -170,4 +170,8 @@ LOGGING = {
 
 # Your stuff...
 # ------------------------------------------------------------------------------
-# DEBUG = True         
+# DEBUG = True
+
+# Static path on Server. Django settings parameter did not show the expected result.
+STATIC_URL_PREFIX = "/backend"
+      
