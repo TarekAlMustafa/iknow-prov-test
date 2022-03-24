@@ -31,7 +31,7 @@ pytest_3_9:
   stage: test
   image: python:3.9
   variables:
-    DATABASE_URL: 'sqlite:////test_db.sqlite3'
+    DATABASE_URL2: 'sqlite:////test_db.sqlite3'
 
 
   before_script:
@@ -53,7 +53,7 @@ pytest_3_10_coverage:
   image: python:3.10
 
   variables:
-    DATABASE_URL: 'sqlite:////test_db.sqlite3'
+    DATABASE_URL2: 'sqlite:////test_db.sqlite3'
 
   before_script:
     - pip install virtualenv
