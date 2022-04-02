@@ -10,42 +10,72 @@ from . import (
     scatter_cont,
     scatter_matrix_cat,
     violin,
-) # this import is needed, so keep it!
+)  # this import is needed, so keep it!
+
 
 # Create your views here.
 
 
+def get_context(request):
+    # print(request.GET.get("default_ds"))
+
+    dataframe_value = "TRY"  # Todo retrieve from DB
+    if request.GET.get("default_ds"):
+        dataframe_value = request.GET.get("default_ds")
+    if request.GET.get("default_ds_id"):
+        dataframe_value_id = request.GET.get("default_ds_id")
+        # Todo  get name from dataset
+
+    context = {
+            'args': {
+                'dataframe': {
+                    'value': dataframe_value
+                }
+            }
+        }
+    return context
+
+
 def pie(request):
-    return render(request, 'viz/pie.html')
+    context = get_context(request)
+    return render(request, 'viz/pie.html', context=context)
 
 
 def bar(request):
-    return render(request, 'viz/bar.html')
+    context = get_context(request)
+    return render(request, 'viz/bar.html', context=context)
 
 
 def violin_view(request):
-    return render(request, 'viz/violin.html')
+    context = get_context(request)
+    return render(request, 'viz/violin.html', context=context)
 
 
 def scatter_cat(request):
-    return render(request, 'viz/scatter_cat.html')
+    context = get_context(request)
+    return render(request, 'viz/scatter_cat.html', context=context)
 
 
 def scatter_cont(request):
-    return render(request, 'viz/scatter_cont.html')
+    context = get_context(request)
+    return render(request, 'viz/scatter_cont.html', context=context)
 
 
 def scatter_3D_cat(request):
-    return render(request, 'viz/scatter_3D_cat.html')
+    context = get_context(request)
+    return render(request, 'viz/scatter_3D_cat.html', context=context)
 
 
 def scatter_matrix_cat(request):
-    return render(request, 'viz/scatter_matrix_cat.html')
+    context = get_context(request)
+    return render(request, 'viz/scatter_matrix_cat.html', context=context)
 
 
 def histogram(request):
-    return render(request, 'viz/histogram.html')
+    context = get_context(request)
+    return render(request, 'viz/histogram.html', context=context)
 
 
 def choose_plot(request):
-    return render(request, 'viz/choose_plot.html')
+    context = get_context(request)
+    return render(request, 'viz/choose_plot.html', context=context)

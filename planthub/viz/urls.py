@@ -5,7 +5,7 @@ from . import views
 app_name = 'viz'
 urlpatterns = [
     path('', views.choose_plot, name='choose_plot'),
-    path('pie', views.pie, name='pie'),
+    path('pie', views.pie, name='viz'),
     path('bar', views.bar, name='bar'),
     path('violin', views.violin_view, name='violin'),
     path('scatter_cat', views.scatter_cat, name='scatter_cat'),
