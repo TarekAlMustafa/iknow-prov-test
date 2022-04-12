@@ -5,7 +5,7 @@ from django.conf import settings
 path = str(settings.APPS_DIR) + "/viz/"
 
 # TODO: This list should come in the future from the database
-datasets = ['TRY', 'PhenObs', 'TRY_Species', 'PhenObs_Species']
+datasets = ['TRY', 'TRY_Species'] #'PhenObs', 'PhenObs_Species'
 
 data_frames = {}
 for item in datasets:
