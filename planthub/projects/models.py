@@ -17,10 +17,10 @@ class Project(models.Model):
     title_de = models.CharField(_("Title in German"), max_length=500)
     sub_title_en = models.CharField(_("Subtitle in English"), max_length=500)
     sub_title_de = models.CharField(_("Subtitle in German"), max_length=500)
-    description_en = models.CharField(_("Description in English"),max_length=2000)
+    description_en = models.CharField(_("Description in English"), max_length=2000)
     description_de = models.CharField(_("Description in German"), max_length=2000)
     logo = models.FileField(_("Project Logo"), upload_to='project_logos/')
-    link = models.CharField(_("Project Website"),max_length=1000)
+    link = models.CharField(_("Project Website"), max_length=1000)
     contact = models.ManyToManyField(ProjectContact, related_name="project_project_contacts",
                                      blank=True, verbose_name=_("Project contacts"))
 
