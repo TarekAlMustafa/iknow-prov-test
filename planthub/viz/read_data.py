@@ -5,12 +5,15 @@ from django.conf import settings
 path = str(settings.APPS_DIR) + "/viz/"
 
 # TODO: This list should come in the future from the database
-datasets = ['TRY', 'TRY_Species'] #'PhenObs', 'PhenObs_Species'
+datasets = ['TRY', 'TRY_Species']  # 'PhenObs', 'PhenObs_Species'
+# datasets = ['TRY', 'PhenObs', 'TRY_Species', 'PhenObs_Species', 'Phenobs_Test2_Species']
+active_datasets = []
 
 data_frames = {}
 for item in datasets:
     try:
         data_frames[item] = pd.read_pickle(path + item + '.pickle')
+        active_datasets.append(item)
     except FileNotFoundError:
         print(item + " not found.")
 
@@ -68,3 +71,7 @@ def get_valid_third_column(name_of_dataframe, x_col, y_col):
 def get_valid_fourth_column(name_of_dataframe, x_col, y_col, z_col):
     return [col4 for col4 in xyzw_crossings[name_of_dataframe].get_index('x-col') if
             xyzw_crossings[name_of_dataframe].loc[x_col, y_col, z_col, col4].item() > 0]
+
+
+def get_active_dataset():
+    return active_datasets
