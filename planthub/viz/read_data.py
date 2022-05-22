@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import xarray as xr
-from django.conf import settings
 from pathlib import Path
 
 # path = str(settings.APPS_DIR) + "/viz/"
