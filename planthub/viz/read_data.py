@@ -1,9 +1,12 @@
+import os
 import pandas as pd
 import xarray as xr
 from django.conf import settings
+from pathlib import Path
 
-path = str(settings.APPS_DIR) + "/viz/"
-
+# path = str(settings.APPS_DIR) + "/viz/"
+path = data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data', 'viz')
+print(path)
 # TODO: This list should come in the future from the database
 datasets = ['TRY', 'TRY_Species']  # 'PhenObs', 'PhenObs_Species'
 # datasets = ['TRY', 'PhenObs', 'TRY_Species', 'PhenObs_Species', 'Phenobs_Test2_Species']
@@ -12,7 +15,7 @@ active_datasets = []
 data_frames = {}
 for item in datasets:
     try:
-        data_frames[item] = pd.read_pickle(path + item + '.pickle')
+        data_frames[item] = pd.read_pickle(os.path.join(path, item + '.pickle'))
         active_datasets.append(item)
     except FileNotFoundError:
         print(item + " not found.")
@@ -21,19 +24,19 @@ dataframe_options = [{'label': i.replace("_", " "), 'value': i} for i in data_fr
 
 xy_crossings = {}
 for df in data_frames:
-    with xr.open_dataarray(f'{path}{df}_xy.nc') as da:
+    with xr.open_dataarray(os.path.join(path, df + '_xy.nc')) as da:
         da.load()
     xy_crossings[df] = da
 
 xyz_crossings = {}
 for df in data_frames:
-    with xr.open_dataarray(f'{path}{df}_xyz.nc') as da:
+    with xr.open_dataarray(os.path.join(path, df + '_xyz.nc')) as da:
         da.load()
     xyz_crossings[df] = da
 
 xyzw_crossings = {}
 for df in data_frames:
-    with xr.open_dataarray(f'{path}{df}_xyzw.nc') as da:
+    with xr.open_dataarray(os.path.join(path, df + '_xyzw.nc')) as da:
         da.load()
     xyzw_crossings[df] = da
 
