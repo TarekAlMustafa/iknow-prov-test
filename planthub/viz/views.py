@@ -1,5 +1,7 @@
 # flake8: noqa
 from django.shortcuts import render
+from .read_data import get_active_dataset
+from django.http import JsonResponse
 
 from . import (
     bar,
@@ -13,11 +15,15 @@ from . import (
 )  # this import is needed, so keep it!
 
 
+def get_datasets(request):
+    return JsonResponse(get_active_dataset(), safe=False)
+
+
 # Create your views here.
 
 
 def get_context(request):
-    # print(request.GET.get("default_ds"))
+    print(request.GET.get("default_ds"))
 
     dataframe_value = "TRY"  # Todo retrieve from DB
     if request.GET.get("default_ds"):
@@ -27,12 +33,12 @@ def get_context(request):
         # Todo  get name from dataset
 
     context = {
-            'args': {
-                'dataframe': {
-                    'value': dataframe_value
-                }
+        'args': {
+            'dataframe': {
+                'value': dataframe_value
             }
         }
+    }
     return context
 
 
