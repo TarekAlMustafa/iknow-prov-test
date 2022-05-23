@@ -24,7 +24,8 @@ urlpatterns = [
     path("django_plotly_dash/", include("django_plotly_dash.urls")),
     # Knowledge Graph query builder
     path("kg_query/", include("planthub.kg_query.urls")),
-
+    path('search/', include('planthub.search.urls', namespace="search")),
+    path('projects/', include('planthub.projects.urls', namespace="projects")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
