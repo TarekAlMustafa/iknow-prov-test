@@ -240,15 +240,18 @@ def create_index():
 
         species = set_taxon_rank(row, 'AccSpeciesName', 'species')
         taxon_list.append(species)
+        
+        if str(row['AccGenus']) != 'nan':
+            genus = set_taxon_rank(row, 'AccGenus', 'genus')
+            taxon_list.append(genus)
+        
+        if str(row['Family']) != 'nan':
+            family = set_taxon_rank(row, 'Family', 'family')
+            taxon_list.append(family)
 
-        genus = set_taxon_rank(row, 'AccGenus', 'genus')
-        taxon_list.append(genus)
-
-        family = set_taxon_rank(row, 'Family', 'family')
-        taxon_list.append(family)
-
-        order = set_taxon_rank(row, 'Order', 'order')
-        taxon_list.append(order)
+        if str(row['Order']) != 'nan':
+            order = set_taxon_rank(row, 'Order', 'order')
+            taxon_list.append(order)
         if str(row['superorder']) != 'nan':
             superorder = set_taxon_rank(row, 'superorder', 'superorder', False)
             taxon_list.append(superorder)
@@ -270,6 +273,7 @@ def create_index():
                               superorder=superorder['scientific_name'],
                               count=row['count']).save(return_doc_meta=True)
         # print(return_val)
+
         for taxon in taxon_list:
             check = PlantHubSpeciesIndex.get(id=taxon['scientific_name'].strip().replace(" ", "_"), ignore=404)
             if check is None:
@@ -285,5 +289,9 @@ def delete_and_create():
     delete_index()
     create_index()
 
+<<<<<<< Updated upstream
 
+=======
+# create_index()
+>>>>>>> Stashed changes
 # delete_and_create()
