@@ -19,16 +19,24 @@ connections.create_connection(hosts=['localhost:9200'], timeout=20)
 # data_path = 'C:\Daten\Documents\Projekte\plantHub\PlantHub\planthub\planthub\search\\'
 
 # data_path = str(settings.APPS_DIR) + "/search/"
+
 data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data')
 
-df_data = pd.read_csv(os.path.join(data_path, 'PhenObs_2022-02-28 (1).csv'), encoding='unicode_escape',
-                      low_memory=False)
-df_genera = pd.read_csv(os.path.join(data_path, 'PlantHub genera_2022-05-13_v3.csv'), encoding='UTF-8',
-                        low_memory=False, encoding_errors="replace")
-df_family = pd.read_csv(os.path.join(data_path, 'PlantHub families_2022-05-10.csv'), encoding='UTF-8',
-                        low_memory=False, encoding_errors="replace")
-df_order = pd.read_csv(os.path.join(data_path, 'PlantHub orders_2022-05-10.csv'), encoding='UTF-8',
-                       low_memory=False, encoding_errors="replace")
+file_name = 'PhenObs_2022-02-28 (1).csv'
+dataset_title = 'PhenObs'
+
+
+def read_files():
+    global df_data, df_genera, df_family, df_order
+
+    df_data = pd.read_csv(os.path.join(data_path, file_name), encoding='unicode_escape',
+                          low_memory=False)
+    df_genera = pd.read_csv(os.path.join(data_path, 'PlantHub genera_2022-05-13_v3.csv'), encoding='UTF-8',
+                            low_memory=False, encoding_errors="replace")
+    df_family = pd.read_csv(os.path.join(data_path, 'PlantHub families_2022-05-10.csv'), encoding='UTF-8',
+                            low_memory=False, encoding_errors="replace")
+    df_order = pd.read_csv(os.path.join(data_path, 'PlantHub orders_2022-05-10.csv'), encoding='UTF-8',
+                           low_memory=False, encoding_errors="replace")
 
 
 def mode_on_cols(df, key_col, value_cols):
@@ -69,9 +77,6 @@ def aggregate_dataframe_on_species(df):
 
 
 def add_family(df):
-    print(df_genera.head(40))
-    # df_genera['EnglishName'].replace('"ë"','"ë"',inplace=True)
-    # df_genera['GermanName'].replace('"ë"','"ë"',inplace=True)
     result_df = pd.merge(df, df_genera, on='AccGenus', how='left')
     return result_df
 
@@ -215,7 +220,7 @@ def set_taxon_rank(row, row_name, taxon_rank_name, with_translation=True):
                                      'en', taxon_rank_name, taxon_rank['scientific_name'])
         taxon_rank = set_translation(taxon_rank, row[taxon_rank_name + "_GermanName"],
                                      'de', taxon_rank_name, taxon_rank['scientific_name'])
-    print(taxon_rank)
+    # print(taxon_rank['scientific_name'])
     return taxon_rank
 
 
@@ -224,6 +229,8 @@ def create_index():
     PlantHubDatasetsIndex.init()
     PlantHubSpeciesIndex.init()
     PlantHubVariableIndex.init()
+
+    read_files()
 
     df_data_agg = aggregate_dataframe_on_species(df_data)
     result = add_hierachry(df_data_agg)
@@ -257,12 +264,12 @@ def create_index():
                     new_entry.meta.id = col.strip().replace(" ", "_")
                     new_entry.save()
 
-        return_val = PlantHubDatasetsIndex(id=1, title="PhenObs", species=species['scientific_name'],
-                                           genus=genus['scientific_name'], variables=variables,
-                                           family=family['scientific_name'], order=order['scientific_name'],
-                                           superorder=superorder['scientific_name'],
-                                           count=row['count']).save(return_doc_meta=True)
-        print(return_val)
+        PlantHubDatasetsIndex(id=1, title=dataset_title, species=species['scientific_name'],
+                              genus=genus['scientific_name'], variables=variables,
+                              family=family['scientific_name'], order=order['scientific_name'],
+                              superorder=superorder['scientific_name'],
+                              count=row['count']).save(return_doc_meta=True)
+        # print(return_val)
         for taxon in taxon_list:
             check = PlantHubSpeciesIndex.get(id=taxon['scientific_name'].strip().replace(" ", "_"), ignore=404)
             if check is None:
@@ -278,4 +285,4 @@ def delete_and_create():
     delete_index()
     create_index()
 
-# delete_and_create()
+delete_and_create()

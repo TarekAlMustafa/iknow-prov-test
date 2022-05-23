@@ -43,10 +43,10 @@ class Elasticsearch(APIView):
         #     for (facet, count, selected) in response.facets[facet]:
         #         print(facet, ' (SELECTED):' if selected else ':', count)
 
-        for hit in response:
-
-            if hit.meta.index == "planthub_datasets_index":
-                hits.append({'score': round(hit.meta.score, 3), 'title': hit.title, 'genus': hit.genus})
+        # switch off the get all hits
+        # for hit in response:
+        # if hit.meta.index == "planthub_datasets_index":
+        #   hits.append({'score': round(hit.meta.score, 3), 'title': hit.title, 'genus': hit.genus})
 
         list_order['title'] = 1
         list_order["genus"] = 2

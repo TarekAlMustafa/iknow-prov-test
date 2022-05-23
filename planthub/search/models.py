@@ -29,13 +29,15 @@ class PlantHubSearch(FacetedSearch):
         q = super(PlantHubSearch, self).search()
         print(self._query)
         # CommentsIndex.search().query('nested', path='user_post_id', query=Q('range', eser_post_id__score={'gt': 42}))
-
+        search_query = q
         # Fuzzy text search within variables type and full name & field list (combined with OR)
-        search_query = \
-            q.query(Q("nested", path="variables",
-                      query=Q("multi_match", fields=['variables.type', 'variables.name_full'],
-                              query=self._query["text"], fuzziness="AUTO", operator="AND")) |
-                    Q("multi_match", fields=self.fields, query=self._query["text"], fuzziness="AUTO", operator="AND"))
+        if len(self._query["text"]) > 0:
+            search_query = \
+                q.query(Q("nested", path="variables",
+                          query=Q("multi_match", fields=['variables.type', 'variables.name_full'],
+                                  query=self._query["text"], fuzziness="AUTO", operator="AND")) |
+                        Q("multi_match", fields=self.fields, query=self._query["text"],
+                          fuzziness="AUTO", operator="AND"))
 
         if self._query["species"]:
             d = {'species': self._query["species"]}
