@@ -285,4 +285,5 @@ def delete_and_create():
     delete_index()
     create_index()
 
-delete_and_create()
+
+# delete_and_create()
