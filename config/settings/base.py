@@ -1,4 +1,3 @@
-# flake8: noqa
 """
 Base settings to build other settings files upon.
 """
@@ -81,7 +80,7 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "planthub.users.apps.UsersConfig",
     "planthub.datasets.apps.DatasetsConfig",
-    "planthub.viz.apps.VizConfig" ,
+    "planthub.viz.apps.VizConfig",
     'django_plotly_dash.apps.DjangoPlotlyDashConfig',
     "planthub.search.apps.SearchConfig",
     "planthub.projects.apps.ProjectsConfig"
@@ -219,7 +218,8 @@ CSRF_COOKIE_HTTPONLY = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-browser-xss-filter
 SECURE_BROWSER_XSS_FILTER = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
-#X_FRAME_OPTIONS = "DENY"
+X_FRAME_OPTIONS = "SAMEORIGIN"
+# X_FRAME_OPTIONS = 'allow-from http://127.0.0.1:3000/'
 
 # EMAIL
 # ------------------------------------------------------------------------------
@@ -291,7 +291,7 @@ REST_FRAMEWORK = {
 }
 
 # django-cors-headers - https://github.com/adamchainz/django-cors-headers#setup
-CORS_URLS_REGEX = r"^/(api|users|datasets)/.*$"
+CORS_URLS_REGEX = r"^/(api|users|datasets|viz|search|projects)/.*$"
 
 # Your stuff...
 # ------------------------------------------------------------------------------
@@ -300,14 +300,10 @@ CORS_URLS_REGEX = r"^/(api|users|datasets)/.*$"
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
-
-
-X_FRAME_OPTIONS = 'SAMEORIGIN'
-
+CORS_ALLOW_HEADERS = ('Authorization', 'Content-Type', 'Cache-Control', 'X-Requested-With')
 
 # BLAZEGRAPH Settings
 BLAZEGRAPH_URL = 'http://localhost:8889/'
 
 # Static path on Server. Django settings parameter did not show the expected result.
 STATIC_URL_PREFIX = ""
-
