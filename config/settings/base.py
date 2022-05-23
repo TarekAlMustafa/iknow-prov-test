@@ -81,8 +81,10 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "planthub.users.apps.UsersConfig",
     "planthub.datasets.apps.DatasetsConfig",
-     "planthub.viz.apps.VizConfig" ,
-      'django_plotly_dash.apps.DjangoPlotlyDashConfig',
+    "planthub.viz.apps.VizConfig" ,
+    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
+    "planthub.search.apps.SearchConfig",
+    "planthub.projects.apps.ProjectsConfig"
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
