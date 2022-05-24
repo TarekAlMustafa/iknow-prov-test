@@ -1,5 +1,4 @@
 # from elasticsearch import Elasticsearch
-import elasticsearch
 from elasticsearch_dsl import FacetedSearch, NestedFacet, Q, TermsFacet, connections
 
 # from elasticsearch import TransportError

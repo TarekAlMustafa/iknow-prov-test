@@ -237,9 +237,9 @@ def create_index():
     read_files()
 
     df_data_agg = aggregate_dataframe_on_species(df_data)
-    df_data_agg.to_csv("agg_test.csv")
+    # df_data_agg.to_csv("agg_test.csv")
     result = add_hierachry(df_data_agg)
-    result.to_csv("agg_test_full.csv")
+    # result.to_csv("agg_test_full.csv")
 
     for index, row in result.iterrows():
         taxon_list = []
