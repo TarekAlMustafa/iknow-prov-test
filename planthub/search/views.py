@@ -21,6 +21,8 @@ class Elasticsearch(APIView):
         filter['text'] = request.query_params.get("search_term")
         filter['order'] = request.query_params.get("order")
         filter['superorder'] = request.query_params.get("superorder")
+        filter['subclass'] = request.query_params.get("subclass")
+        filter['class1'] = request.query_params.get("class1")
         filter['species'] = request.query_params.get("species")
         filter['variable'] = request.query_params.get("variable")
         # filter['domain'] =  request.query_params.get("domain")
@@ -28,7 +30,7 @@ class Elasticsearch(APIView):
         #   print(search_term)
         ws = PlantHubSearch(filter)
         count = ws.count()  # Total count of result)
-        response = ws[0:count].execute()  # default size is 10 -> set size to total count
+        response = ws[0].execute()  # default size is 10 -> set size to total count
 
         # print response.__dict__
 
@@ -44,18 +46,20 @@ class Elasticsearch(APIView):
         #         print(facet, ' (SELECTED):' if selected else ':', count)
 
         # switch off the get all hits
-        # for hit in response:
-        # if hit.meta.index == "planthub_datasets_index":
-        #   hits.append({'score': round(hit.meta.score, 3), 'title': hit.title, 'genus': hit.genus})
+        for hit in response:
+            if hit.meta.index == "planthub_datasets_index":
+                hits.append({'score': round(hit.meta.score, 3), 'title': hit.title, 'genus': hit.genus})
 
         list_order['title'] = 1
-        list_order["genus"] = 2
-        list_order["family"] = 3
-        list_order["superorder"] = 4
+        list_order["species"] = 2
+        list_order["genus"] = 3
+        list_order["family"] = 4
+        list_order["order"] = 5
+        list_order["superorder"] = 6
+        list_order["subclass"] = 7
+        list_order["class1"] = 8
         list_order["variable"] = 5
         list_order["variable_type"] = 6
-        list_order["order"] = 7
-        list_order["species"] = 8
 
         facets_ordered = []
         print(response.facets.__dict__)

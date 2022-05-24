@@ -22,8 +22,10 @@ connections.create_connection(hosts=['localhost:9200'], timeout=20)
 
 data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data')
 
-file_name = 'PhenObs_2022-02-28 (1).csv'
-dataset_title = 'PhenObs'
+datasets = []
+datasets.append({'file_name': 'PhenObs_2022-02-28 (1).csv', 'dataset_title': 'PhenObs'})
+datasets.append({'file_name': 'TRY_2022-05-09', 'dataset_title': 'TRY'})
+datasets.append({'file_name': 'sPlot_2022-02-28', 'dataset_title': 'sPlot'})
 
 
 def read_files():
@@ -120,6 +122,8 @@ class PlantHubDatasetsIndex(Document):
     family = Keyword()
     order = Keyword()
     superorder = Keyword()
+    subclass = Keyword()
+    class1 = Keyword()
 
     variables = Nested(
         multi=True,
@@ -233,18 +237,20 @@ def create_index():
     read_files()
 
     df_data_agg = aggregate_dataframe_on_species(df_data)
+    df_data_agg.to_csv("agg_test.csv")
     result = add_hierachry(df_data_agg)
+    result.to_csv("agg_test_full.csv")
 
     for index, row in result.iterrows():
         taxon_list = []
 
         species = set_taxon_rank(row, 'AccSpeciesName', 'species')
         taxon_list.append(species)
-        
+
         if str(row['AccGenus']) != 'nan':
             genus = set_taxon_rank(row, 'AccGenus', 'genus')
             taxon_list.append(genus)
-        
+
         if str(row['Family']) != 'nan':
             family = set_taxon_rank(row, 'Family', 'family')
             taxon_list.append(family)
@@ -252,15 +258,24 @@ def create_index():
         if str(row['Order']) != 'nan':
             order = set_taxon_rank(row, 'Order', 'order')
             taxon_list.append(order)
+
         if str(row['superorder']) != 'nan':
             superorder = set_taxon_rank(row, 'superorder', 'superorder', False)
             taxon_list.append(superorder)
+
+        if str(row['subclass']) != 'nan':
+            subclass = set_taxon_rank(row, 'subclass', 'subclass', False)
+            taxon_list.append(subclass)
+
+        if str(row['class']) != 'nan':
+            class1 = set_taxon_rank(row, 'class', 'class', False)
+            taxon_list.append(class1)
 
         variables = []
         for col in result.columns:
             # print(col)
             if str(row[col]) != 'nan':
-                variables.append({'name_full': col, 'type': 'trait'})
+                variables.append({'name_full': col, 'type': 'trait'})  # todo add correct type here
                 check = PlantHubVariableIndex.get(id=col.strip().replace(" ", "_"), ignore=404)
                 if check is None:
                     new_entry = PlantHubVariableIndex(variable_name=col.strip().replace("_", " "), )
@@ -270,8 +285,10 @@ def create_index():
         PlantHubDatasetsIndex(id=1, title=dataset_title, species=species['scientific_name'],
                               genus=genus['scientific_name'], variables=variables,
                               family=family['scientific_name'], order=order['scientific_name'],
-                              superorder=superorder['scientific_name'],
+                              superorder=superorder['scientific_name'], subclass=subclass['scientific_name'],
+                              class1=class1['scientific_name'],
                               count=row['count']).save(return_doc_meta=True)
+        print(species['scientific_name'])
         # print(return_val)
 
         for taxon in taxon_list:
@@ -286,12 +303,12 @@ def create_index():
 
 
 def delete_and_create():
+    global file_name, dataset_title
     delete_index()
-    create_index()
+    for dataset in datasets:
+        file_name = dataset['file_name']
+        dataset_title = dataset['dataset_title']
+        create_index()
 
-<<<<<<< Updated upstream
-
-=======
-# create_index()
->>>>>>> Stashed changes
 # delete_and_create()
+# create_index()

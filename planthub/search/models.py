@@ -1,4 +1,5 @@
 # from elasticsearch import Elasticsearch
+import elasticsearch
 from elasticsearch_dsl import FacetedSearch, NestedFacet, Q, TermsFacet, connections
 
 # from elasticsearch import TransportError
@@ -6,6 +7,8 @@ from .create_index import PlantHubDatasetsIndex
 
 # Connect with es on port
 # Todo error handling if not available
+
+
 connections.create_connection(hosts=['localhost:9200'], timeout=20)
 
 
@@ -21,6 +24,8 @@ class PlantHubSearch(FacetedSearch):
         'family': TermsFacet(field='family', size=100),
         'order': TermsFacet(field='order', size=100),
         'superorder': TermsFacet(field='superorder', size=100),
+        'subclass': TermsFacet(field='subclass', size=100),
+        'class1': TermsFacet(field='class1', size=100),
         'variable': NestedFacet('variables', TermsFacet(field='variables.name_full.keyword', size=100)),
         'variable_type': NestedFacet('variables', TermsFacet(field='variables.type.keyword', size=100)),
     }
@@ -57,6 +62,14 @@ class PlantHubSearch(FacetedSearch):
 
         if self._query["superorder"]:
             d = {'superorder': self._query["superorder"]}
+            search_query = search_query.filter('term', **d)
+
+        if self._query["subclass"]:
+            d = {'subclass': self._query["subclass"]}
+            search_query = search_query.filter('term', **d)
+
+        if self._query["class1"]:
+            d = {'class1': self._query["class1"]}
             search_query = search_query.filter('term', **d)
 
         if (self._query["variable"]):
