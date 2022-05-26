@@ -10,7 +10,7 @@ ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
 APPS_DIR = ROOT_DIR / "planthub"
 env = environ.Env()
 
-READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=False)
+READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=True)  # True -> read .env file
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
     env.read_env(str(ROOT_DIR / ".env"))
@@ -40,7 +40,10 @@ LOCALE_PATHS = [str(ROOT_DIR / "locale")]
 # DATABASES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
-DATABASES = {"default": env.db("DATABASE_URL")}
+DATABASES = {
+    "default": env.db("DATABASE_URL2")
+}
+
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 # URLS
@@ -69,13 +72,18 @@ THIRD_PARTY_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "rest_framework",
-    "rest_framework.authtoken",
+    # "rest_framework.authtoken",
     "corsheaders",
+    "knox"
 ]
 
 LOCAL_APPS = [
     "planthub.users.apps.UsersConfig",
     "planthub.datasets.apps.DatasetsConfig",
+    "planthub.viz.apps.VizConfig",
+    'django_plotly_dash.apps.DjangoPlotlyDashConfig',
+    "planthub.search.apps.SearchConfig",
+    "planthub.projects.apps.ProjectsConfig"
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -210,7 +218,8 @@ CSRF_COOKIE_HTTPONLY = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-browser-xss-filter
 SECURE_BROWSER_XSS_FILTER = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
-X_FRAME_OPTIONS = "DENY"
+X_FRAME_OPTIONS = "SAMEORIGIN"
+# X_FRAME_OPTIONS = 'allow-from http://127.0.0.1:3000/'
 
 # EMAIL
 # ------------------------------------------------------------------------------
@@ -242,7 +251,7 @@ LOGGING = {
     "formatters": {
         "verbose": {
             "format": "%(levelname)s %(asctime)s %(module)s "
-            "%(process)d %(thread)d %(message)s"
+                      "%(process)d %(thread)d %(message)s"
         }
     },
     "handlers": {
@@ -254,7 +263,6 @@ LOGGING = {
     },
     "root": {"level": "INFO", "handlers": ["console"]},
 }
-
 
 # django-allauth
 # ------------------------------------------------------------------------------
@@ -274,14 +282,28 @@ SOCIALACCOUNT_ADAPTER = "planthub.users.adapters.SocialAccountAdapter"
 # -------------------------------------------------------------------------------
 # django-rest-framework - https://www.django-rest-framework.org/api-guide/settings/
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework.authentication.SessionAuthentication",
-        "rest_framework.authentication.TokenAuthentication",
-    ),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_AUTHENTICATION_CLASSES": ('knox.auth.TokenAuthentication',),
+    # "DEFAULT_AUTHENTICATION_CLASSES": (
+    # "rest_framework.authentication.SessionAuthentication",
+    # "rest_framework.authentication.TokenAuthentication",
+    # ),
+    #  "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
 
 # django-cors-headers - https://github.com/adamchainz/django-cors-headers#setup
-CORS_URLS_REGEX = r"^/api/.*$"
+CORS_URLS_REGEX = r"^/(api|users|datasets|viz|search|projects)/.*$"
+
 # Your stuff...
 # ------------------------------------------------------------------------------
+# Allow all or only a certain address
+# CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+]
+CORS_ALLOW_HEADERS = ('Authorization', 'Content-Type', 'Cache-Control', 'X-Requested-With')
+
+# BLAZEGRAPH Settings
+BLAZEGRAPH_URL = 'http://localhost:8889/'
+
+# Static path on Server. Django settings parameter did not show the expected result.
+STATIC_URL_PREFIX = ""

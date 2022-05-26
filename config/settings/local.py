@@ -1,3 +1,4 @@
+# flake8: noqa
 from .base import *  # noqa
 from .base import env
 
@@ -11,7 +12,8 @@ SECRET_KEY = env(
     default="hi9QXEFQEh0dzRTv7igcf63fBfmk0t97bB5NJcNWSxw1KCo0QLiNqpI6d979ZypS",
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#allowed-hosts
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "10.149.0.38", "iknow.inf-bb.uni-jena.de"]
+DATABASES["default"] = env.db("DATABASE_URL2", default="postgres://postgres:\"\"@127.0.0.1:5432/planthub")
 
 # CACHES
 # ------------------------------------------------------------------------------
@@ -49,11 +51,14 @@ DEBUG_TOOLBAR_CONFIG = {
 }
 # https://django-debug-toolbar.readthedocs.io/en/latest/installation.html#internal-ips
 INTERNAL_IPS = ["127.0.0.1", "10.0.2.2"]
-if env("USE_DOCKER") == "yes":
-    import socket
 
-    hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
-    INTERNAL_IPS += [".".join(ip.split(".")[:-1] + ["1"]) for ip in ips]
+
+# if env("USE_DOCKER") == "yes":
+#    import socket
+#
+#    hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+#    INTERNAL_IPS += [".".join(ip.split(".")[:-1] + ["1"]) for ip in ips]
+
 
 # django-extensions
 # ------------------------------------------------------------------------------

@@ -5,6 +5,9 @@ With these settings, tests run faster.
 from .base import *  # noqa
 from .base import env
 
+# Overwrite database settings
+DATABASES = {"default": env.db("DATABASE_URL2")}
+
 # GENERAL
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#secret-key
@@ -14,9 +17,6 @@ SECRET_KEY = env(
 )
 # https://docs.djangoproject.com/en/dev/ref/settings/#test-runner
 TEST_RUNNER = "django.test.runner.DiscoverRunner"
-
-
-
 
 # PASSWORDS
 # ------------------------------------------------------------------------------
