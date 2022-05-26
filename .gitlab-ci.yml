@@ -1,6 +1,7 @@
 stages:
-  - lint
-  - test
+ # - lint
+ # - test
+  - deploy
 
 
 flake8:
@@ -72,4 +73,30 @@ pytest_3_10_coverage:
     reports:
       junit: report.xml
       cobertura: coverage.xml
+
+deploy:
+  stage: deploy
+  only:
+    - master
+  image: python:3.10
+  tags:
+    - planthub
+ # image: ubuntu:latest
+  before_script:
+    - apt-get update -qq
+    #- apt-get install -qq git
+    # Setup SSH deploy keys
+    - 'which ssh-agent || ( apt-get install -qq openssh-client )'
+    - eval $(ssh-agent -s)
+    - ssh-add <(echo "$SSH_PRIVATE_KEY")
+    - mkdir -p ~/.ssh
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+    # - npm install
+  script:
+    - ping iknow.inf-bb.uni-jena.de
+    #- ssh-add <(echo "$SSH_PRIVATE_KEY")
+    #- npm run build
+    - ssh deploy@iknow.inf-bb.uni-jena.de "cd /var/www/PlantHub/planthub && git pull git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@git.uni-jena.de/fusion/project/planthub/planthub-website-backend"
+    #- scp -P22 -r build/* deploy@iknow.inf-bb.uni-jena.de:/var/www/html
+
 
