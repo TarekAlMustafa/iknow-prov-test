@@ -24,7 +24,7 @@ class Dataset(models.Model):
 
 
 def get_file_path(self, filename):
-    return os.path.join("data","files", str(self.dataset.id), str(self.version), filename)
+    return os.path.join("data", "files", str(self.dataset.id), str(self.version), filename)
 
 
 class Datastructure(models.Model):
