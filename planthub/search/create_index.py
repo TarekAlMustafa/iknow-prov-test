@@ -9,6 +9,7 @@ from elasticsearch_dsl import (
     Integer,
     Keyword,
     Nested,
+    SearchAsYouType,
     Text,
     connections,
 )
@@ -118,6 +119,7 @@ class PlantHubDatasetsIndex(Document):
     dataset_id = Integer()
     count = Integer()
     species = Keyword()
+    subspecies = Keyword()
     genus = Keyword()
     family = Keyword()
     order = Keyword()
@@ -165,7 +167,8 @@ class PlantHubSpeciesIndex(Document):
 
 
 class PlantHubVariableIndex(Document):
-    variable_name = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
+    variable_name = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion(),
+                                                 'search_as_you_type': SearchAsYouType(max_shingle_size=3)})
     variable_description = Text()
     variable_type = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
     variable_subtype = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
@@ -243,9 +246,22 @@ def create_index():
 
     for index, row in result.iterrows():
         taxon_list = []
+        subspecies = {'scientific_name': None, 'subspecies_EnglishName': None, 'subspecies_GermanName': None}
 
-        species = set_taxon_rank(row, 'AccSpeciesName', 'species')
-        taxon_list.append(species)
+        if len(row['AccSpeciesName'].split(" ")) > 2:
+            row['subspecies_EnglishName'] = row['species_EnglishName']
+            row['species_EnglishName'] = None
+            row['subspecies_GermanName'] = row['species_GermanName']
+            row['species_GermanName'] = None
+            subspecies = set_taxon_rank(row, 'AccSpeciesName', 'subspecies')
+            taxon_list.append(subspecies)
+
+            row['Species'] = " ".join(row['AccSpeciesName'].split(" ")[:2])
+            species = set_taxon_rank(row, 'Species', 'species')
+            taxon_list.append(species)
+        else:
+            species = set_taxon_rank(row, 'AccSpeciesName', 'species')
+            taxon_list.append(species)
 
         if str(row['AccGenus']) != 'nan':
             genus = set_taxon_rank(row, 'AccGenus', 'genus')
@@ -283,6 +299,7 @@ def create_index():
                     new_entry.save()
 
         PlantHubDatasetsIndex(id=1, title=dataset_title, species=species['scientific_name'],
+                              subspecies=subspecies['scientific_name'],
                               genus=genus['scientific_name'], variables=variables,
                               family=family['scientific_name'], order=order['scientific_name'],
                               superorder=superorder['scientific_name'], subclass=subclass['scientific_name'],

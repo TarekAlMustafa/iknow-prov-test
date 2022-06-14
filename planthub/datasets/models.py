@@ -9,7 +9,8 @@ from semantic_version import django_fields as semVer
 # todo add display name, add help, null/empty
 class Dataset(models.Model):
     title = models.CharField(_("Title"), max_length=500)
-    description = models.CharField(max_length=1000)
+    description = models.CharField(max_length=2000)
+    citation = models.CharField(max_length=2000, null=True)
     source = models.CharField(max_length=1000)
     contact = models.CharField(max_length=1000)
     link_metadata = models.CharField(max_length=1000)
@@ -23,7 +24,7 @@ class Dataset(models.Model):
 
 
 def get_file_path(self, filename):
-    return os.path.join("files", str(self.dataset.id), str(self.version), filename)
+    return os.path.join("data", "files", str(self.dataset.id), str(self.version), filename)
 
 
 class Datastructure(models.Model):
@@ -62,6 +63,8 @@ class File(models.Model):
     version = semVer.VersionField(coerce=True, max_length=30)
     date = models.DateField()
     dataset = models.ForeignKey(Dataset, on_delete=models.CASCADE)
+    citation = models.CharField(max_length=2000, null=True)
+
     datastructure = models.ForeignKey(
         Datastructure, on_delete=models.DO_NOTHING, null=True
     )
@@ -71,6 +74,12 @@ class File(models.Model):
 
     def file_size(self):
         return self.file.__sizeof__()
+
+    def get_citation(self):
+        if self.citation:
+            return self.citation
+        else:
+            return self.dataset.citation
 
     def __str__(self):
         return os.path.basename(self.file.name) + "(" + str(self.version) + ")"

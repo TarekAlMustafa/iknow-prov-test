@@ -19,13 +19,14 @@ class PlantHubSearch(FacetedSearch):
     facets = {
         'title': TermsFacet(field='title', size=100),
         'species': TermsFacet(field='species', size=100),
+        'subspecies': TermsFacet(field='subspecies', size=100),
         'genus': TermsFacet(field='genus', size=100),
         'family': TermsFacet(field='family', size=100),
         'order': TermsFacet(field='order', size=100),
         'superorder': TermsFacet(field='superorder', size=100),
         'subclass': TermsFacet(field='subclass', size=100),
         'class1': TermsFacet(field='class1', size=100),
-        'variable': NestedFacet('variables', TermsFacet(field='variables.name_full.keyword', size=100)),
+        'variable': NestedFacet('variables', TermsFacet(field='variables.name_full.keyword', size=300)),
         'variable_type': NestedFacet('variables', TermsFacet(field='variables.type.keyword', size=100)),
     }
 
@@ -42,9 +43,13 @@ class PlantHubSearch(FacetedSearch):
                                   query=self._query["text"], fuzziness="AUTO", operator="AND")) |
                         Q("multi_match", fields=self.fields, query=self._query["text"],
                           fuzziness="AUTO", operator="AND"))
-
+        print(self._query["species"])
         if self._query["species"]:
             d = {'species': self._query["species"]}
+            search_query = search_query.filter('term', **d)
+
+        if self._query["subspecies"]:
+            d = {'subspecies': self._query["subspecies"]}
             search_query = search_query.filter('term', **d)
 
         if self._query["genus"]:
