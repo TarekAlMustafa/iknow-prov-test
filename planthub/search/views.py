@@ -3,11 +3,7 @@ from elasticsearch_dsl import Search
 from elasticsearch_dsl.query import MultiMatch
 from rest_framework.views import APIView
 
-from .create_index import (
-    PlantHubDatasetsIndex,
-    PlantHubSpeciesIndex,
-    PlantHubVariableIndex,
-)
+from .create_index import PlantHubSpeciesIndex, PlantHubVariableIndex
 from .models import PlantHubSearch
 
 
@@ -24,6 +20,7 @@ class Elasticsearch(APIView):
         filter['subclass'] = request.query_params.get("subclass")
         filter['class1'] = request.query_params.get("class1")
         filter['species'] = request.query_params.get("species")
+        filter['subspecies'] = request.query_params.get("subspecies")
         filter['variable'] = request.query_params.get("variable")
         # filter['domain'] =  request.query_params.get("domain")
         print(filter)
@@ -52,6 +49,7 @@ class Elasticsearch(APIView):
 
         list_order['title'] = 1
         list_order["species"] = 2
+        list_order["subspecies"] = 2
         list_order["genus"] = 3
         list_order["family"] = 4
         list_order["order"] = 5
@@ -136,7 +134,7 @@ class ElasticsearchSuggest(APIView):
 
         response1 = s1.execute()
         response2 = s2.execute()
-        response3 = s3.execute()
+        # response3 = s3.execute()
 
         result = []
 
@@ -158,11 +156,11 @@ class ElasticsearchSuggest(APIView):
                            'cat': suggest._source.taxon_rank,
                            'id': suggest._source.taxon_name})
 
-        for suggest in response3.suggest.simple_suggestion31[0].options:
-            print(suggest.__dict__)
-            result.append({'name': suggest._source.variable_name,
-                           'cat': 'variable',
-                           'id': suggest._source.variable_name.replace(" ", "_")})
+        # for suggest in response3.suggest.simple_suggestion31[0].options:
+        #     print(suggest.__dict__)
+        #     result.append({'name': suggest._source.variable_name,
+        #                    'cat': 'variable',
+        #                    'id': suggest._source.variable_name.replace(" ", "_")})
 
         finalJSON = result
         return JsonResponse(finalJSON, safe=False)
@@ -177,13 +175,13 @@ class ElasticsearchMatch(APIView):
         # print(m)
         s = Search()
         search_term = request.query_params.get("search_term")
-        #  s = s.suggest('simple_suggestion', search_term, term={'field': 'genus.scientific_name'})
+        # s = s.suggest('simple_suggestion', search_term, term={'field': 'variable_name'})
         #   s = s.suggest('simple_suggestion_2', search_term, completion={'field': 'genus.translation.name.completion'})
-        #  response = s.execute()
+        # response = s.execute()
         hits = []
         #  print(response.suggest.simple_suggestion)
         #  print(response.suggest.simple_suggestion_2)
-        s = PlantHubDatasetsIndex.search()
+        s = PlantHubVariableIndex.search()
 
         s.query = MultiMatch(
             query=search_term,
@@ -195,9 +193,9 @@ class ElasticsearchMatch(APIView):
                 "genus.translation.name",
                 "genus.translation.name._2gram",
                 "genus.translation.name._3gram",
-                "variables.name_full",
-                "variables.name_full._2gram",
-                "variables.name_full._3gram",
+                "variable_name",
+                "variable_name._2gram",
+                "variable_name._3gram",
             ]
         )
 
@@ -205,12 +203,9 @@ class ElasticsearchMatch(APIView):
 
         for hit in response:
             print(hit.__dict__)
-            if hit.meta.index == "planthub_species_index":
-                translation = []
-                for translations in hit.genus.translation:
-                    translation.append({'name': translations.name, 'lang': translations.lang})
-                hits.append({'score': round(hit.meta.score, 3), 'title': hit.title,
-                             'genus': {'name': hit.genus.scientific_name, 'translation': translation}})
+            if hit.meta.index == "planthub_variables_index":
+                hits.append({'score': round(hit.meta.score, 3),
+                             'name': hit.variable_name, 'cat': "variable", 'id': ""})
 
-        finalJSON = {'hits': hits, 'facets': []}
-        return JsonResponse(finalJSON)
+        finalJSON = hits
+        return JsonResponse(finalJSON, safe=False)
