@@ -6,6 +6,7 @@ from .views import (
     DatasetInit,
     FetchDataView,
     LinkingView,
+    ProjectNamesView,
     SGPCInfoView,
     SGPInfoView,
     UploadToCollectionView,
@@ -49,6 +50,8 @@ urlpatterns = [
     path('all-sgp-info', SGPInfoView.as_view()),
 
     path('all-sgpc-info', SGPCInfoView.as_view()),
+
+    path('getProjectsName', ProjectNamesView.as_view()),
     # returns dataset data etc. for specific sgproject
     # this might be a good one to merge into
     # [multiple, parameterized]

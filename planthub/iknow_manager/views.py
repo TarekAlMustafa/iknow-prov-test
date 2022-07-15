@@ -17,6 +17,7 @@ from planthub.iknow_sgp.views import createSGP
 from planthub.iknow_sgpc.models import SGPC
 from planthub.iknow_sgpc.views import (
     createCollection,
+    get_all_projects_name,
     get_all_sgp_info,
     get_all_sgpc_info,
 )
@@ -37,9 +38,20 @@ jr_error = JsonResponse({"msg": "error"})
 # redirect ... goto und siehe svelte
 # tool init
 
+
+# TODO:
+#   - implement testcontainers to run (cleaning/linking)
+#   - reading and returning data of linking results (just as cleaningresult for now)
+#   - implement rdf-ization for cleaned table data
+#   - implement rdf-ization for linked table data
+#   - undo functionality (just senseful naming of steps as a dropdown)
+
+#   - check validity of each applied action
+#   - return appropriate error codes for specific failures
+#   - error handling etc. when client uploads files
+
+
 # client creates new sgpc
-
-
 class CreateCollectionView(APIView):
     def post(self, request):
         return createCollection(request)
@@ -81,9 +93,8 @@ class UploadToCollectionView(APIView):
 
         return JsonResponse({"msg": "success"})
 
+
 # data from a specific sgpc is requested
-
-
 class FetchDataView(APIView):
     def get(self, request):
         # get parameters from request
@@ -166,9 +177,8 @@ class FetchDataView(APIView):
 
         return lst
 
+
 # sgp init phase, client chooses header mappings
-
-
 class DatasetInit(APIView):
     # handles the submit from the projctinit page
     # this creates the first [key,value]-pair in the provenanceRecord of type="init"
@@ -204,9 +214,8 @@ class DatasetInit(APIView):
 
         sgp.save()
 
+
 # client invokes cleaning action
-
-
 class CleaningView(APIView):
 
     # this is very experimental, and will change heavily
@@ -299,9 +308,8 @@ class CleaningView(APIView):
 
         sgp.save()
 
+
 # client invokes linking action
-
-
 class LinkingView(APIView):
     def post(self, request):
         json_data = json.loads(request.body)["requestdata"]
@@ -393,4 +401,10 @@ class SGPInfoView(APIView):
 class SGPCInfoView(APIView):
     def get(self, request):
         response = JsonResponse({"tabledata": get_all_sgpc_info()})
+        return response
+
+
+class ProjectNamesView(APIView):
+    def get(self, request):
+        response = JsonResponse({"projectNames": get_all_projects_name()})
         return response

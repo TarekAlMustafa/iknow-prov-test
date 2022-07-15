@@ -40,3 +40,12 @@ def get_all_sgpc_info():
         info.append([sgpc.collectionname, sgpc.bioprojectname, len(sgpc.associated_sgprojects.all())])
 
     return info
+
+
+def get_all_projects_name():
+    info = [['--select one--']]
+
+    for sgpc in SGPC.objects.all():
+        info.append([sgpc.bioprojectname])
+
+    return info
