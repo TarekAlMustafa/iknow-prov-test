@@ -17,12 +17,26 @@ BIOPROJECTNAME_CHOICES = [
 ]
 
 
+class BioProject(models.Model):
+    name = models.CharField(max_length=1023, unique=True, default='', blank=True, null=True)
+
+    def get_all_project_names():
+        return BioProject.objects.values('name').distinct()
+
+    def name_exists(name: str):
+        for n in BioProject.objects.values('name'):
+            if n['name'] == name:
+                return True
+
+        return False
+
+
 class SGPC(models.Model):
     # name of this collection (user convenience when continuing work)
     collectionname = models.CharField(max_length=255, default='')
 
     # name of the associated biology research project (same for the associated sgps)
-    bioprojectname = models.CharField(max_length=255, choices=BIOPROJECTNAME_CHOICES, default='PhenObs')
+    bioprojectname = models.CharField(max_length=1023, default='')
 
     # description of the collection (user convenience)
     description = models.CharField(max_length=2000, default='')

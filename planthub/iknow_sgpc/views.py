@@ -1,7 +1,8 @@
 from django.http import JsonResponse
 
-from .models import SGPC
-from .serializer import CreateCollectionSerializer
+from .models import SGPC, BioProject
+
+# from .serializer import CreateCollectionSerializer
 
 # creates entry in SGPC
 # expects a dict in data with 'data' : {..} and optional subkeys:
@@ -12,16 +13,28 @@ from .serializer import CreateCollectionSerializer
 def createCollection(request):
     data: dict = request.data
 
+    # TODO: - rewrite this with foreign key and or serializer!
     if type(data) == dict and 'data' in data.keys():
-        serializer = CreateCollectionSerializer(data=data['data'])
+        choice = data['data']['bioprojectname']
 
-        if serializer.is_valid():
-            serializer.save()
-            return JsonResponse({"project_id": serializer.data['id']})
-        else:
-            return JsonResponse({"msg": "error"})
-    else:
-        return JsonResponse({"msg": "error"})
+        if data['data']['projectChoice'] == 'select':
+            for proj in BioProject.objects.all():
+                if proj.name == choice:
+                    new_collection = SGPC()
+                    new_collection.bioprojectname = proj.name
+                    new_collection.save()
+                    return JsonResponse({"project_id": new_collection.pk})
+        elif data['data']['projectChoice'] == 'create':
+            if not BioProject.name_exists(choice):
+                newProject = BioProject()
+                newProject.name = choice
+                newProject.save()
+
+            new_collection = SGPC()
+            new_collection.bioprojectname = choice
+            new_collection.save()
+
+            return JsonResponse({"project_id": new_collection.pk})
 
 
 def get_all_sgp_info():
@@ -45,7 +58,10 @@ def get_all_sgpc_info():
 def get_all_projects_name():
     info = [['--select one--']]
 
-    for sgpc in SGPC.objects.all():
-        info.append([sgpc.bioprojectname])
+    for proj_name in BioProject.get_all_project_names():
+        info.append([proj_name['name']])
+
+    # for name_dic in SGPC.objects.values('bioprojectname').distinct():
+    #     info.append([name_dic['bioprojectname']])
 
     return info
