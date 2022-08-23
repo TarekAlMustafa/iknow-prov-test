@@ -37,3 +37,28 @@ def handle_uploaded_file(file, filename):
     datasetentry.save()
 
     return datasetentry
+
+
+def create_new_result_file_field(filename: str):
+    if len(filename) > 8:
+        filename = f'{filename[:-12]}.csv'
+
+    filepath = Path(f"{STORAGE_DIR}{filename}")
+
+    # write new file
+    with open(filepath, 'w') as my_new_csv_file:
+        if my_new_csv_file:
+            pass
+        pass
+
+    # create the model instance
+    datasetentry = Dataset()
+
+    # open the just written file to save it to the file_field
+    with open(filepath, 'rb') as doc_file:
+        datasetentry.file_field.save(filename, File(doc_file), save=True)
+
+    # save the instance
+    datasetentry.save()
+
+    return datasetentry

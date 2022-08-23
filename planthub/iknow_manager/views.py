@@ -2,7 +2,7 @@ import json
 import os
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 # from iknow_tools.views import get_all_tools_workflow_info
 from rest_framework.response import Response
 # from distutils.log import error
@@ -11,9 +11,12 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from planthub.iknow_datasets.models import Dataset
-from planthub.iknow_datasets.views import handle_uploaded_file
+from planthub.iknow_datasets.views import (
+    create_new_result_file_field,
+    handle_uploaded_file,
+)
 from planthub.iknow_sgp.models import SGP
-from planthub.iknow_sgp.views import createSGP
+from planthub.iknow_sgp.views import append_linking_step, createSGP
 from planthub.iknow_sgpc.models import SGPC
 from planthub.iknow_sgpc.views import (
     createCollection,
@@ -22,6 +25,7 @@ from planthub.iknow_sgpc.views import (
     get_all_sgpc_info,
 )
 
+from .cleaning_scripts import wikitesttool
 # from .pdutil.pdconverter import append_boolean_list
 from .pdutil.pdreader import (  # get_json_from_csv,; get_list_from_csv,
     get_list_from_csv_first10rows,
@@ -217,7 +221,6 @@ class DatasetInit(APIView):
 
 # client invokes cleaning action
 class CleaningView(APIView):
-
     # this is very experimental, and will change heavily
     # atm there is only the testmethod, which will not alter anything, but produce a new dataset version
     # any other method will just do nothing, and mark the output- the same as the input dataset in the record
@@ -239,6 +242,8 @@ class CleaningView(APIView):
         #     print("sgpc not valid error")
         #     return jr_error
 
+        temp_datasets = []
+
         # code runs AFTER CLEANING
         for i, key in enumerate(json_data["actions"]):
             # chosen cleaning method, (..= -1 means none)
@@ -253,11 +258,12 @@ class CleaningView(APIView):
                 return jr_error
 
             latest_dataset: Dataset = self.get_latest_dataset_from_SGP(sgp)
-
+            temp_datasets.append(latest_dataset)
             # ENTRY POINT CLEANING
             method, output_pk = self.handle_cleaning(latest_dataset.pk, method)
 
-            self.append_cleaning_step(sgp, method, latest_dataset.pk, output_pk)
+            # commented out for now
+            # self.append_cleaning_step(sgp, method, latest_dataset.pk, output_pk)
 
         return Response()
 
@@ -309,45 +315,93 @@ class CleaningView(APIView):
         sgp.save()
 
 
+# use custom response class to override HttpResponse.close()
+class LinkingtoolsResponse(HttpResponse):
+
+    PROCESS_DATA = []
+
+    def close(self):
+        super(LinkingtoolsResponse, self).close()
+        # last codepoint in request handling
+        if self.status_code == 200:
+            for i, job in enumerate(self.PROCESS_DATA):
+                # assign necessary information
+                selections = job[0].provenanceRecord['0']['selection']
+                input_file_path = job[1].file_field.path
+                output_path = job[2].file_field.path
+                method = job[3]
+
+                # starting routine for a tool (like wikitesttool)
+                # TODO:
+                #   - own function, cased on method
+                print(f"Running Job with method: {method} for file: {input_file_path}.")
+                col_types = []
+                for x in range(len(selections['type'].keys())):
+                    try:
+                        col_types.append(selections['type'][str(x)])
+                    except (Exception):
+                        print(f"Error: Key not were its supposed to be in prov rec {job[0].pk} ")
+                        return
+
+                # RUNS QUERY ONLY FOR String-type columns!!!
+                wikitesttool.main(
+                    INPUT_FILE=input_file_path,
+                    OUTPUT_FILE=output_path,
+                    COL_TYPES=col_types)
+
+
 # client invokes linking action
 class LinkingView(APIView):
+    # receive request with chosen linking actions for each sgp
     def post(self, request):
         json_data = json.loads(request.body)["requestdata"]
+
+        # check if the desired key is there
         if "sgpc_pk" not in json_data.keys():
             return jr_error
 
-        # see identical comment on CleaningView
+        response = LinkingtoolsResponse()
+        jobs = []
 
-        # sgpc_pk = json_data["sgpc_pk"]
-
-        # # get sgpc istance
-        # try:
-        #     sgpc: SGPC = SGPC.objects.get(id=sgpc_pk)
-        # except:
-        #     # sgpc_pk was no valid primary key
-        #     print("sgpc not valid error")
-        #     return jr_error
-
+        # for every chosen action
         for i, key in enumerate(json_data["actions"]):
             # chosen cleaning method, (..= -1 means none)
             method = json_data['actions'][key]['method']
 
-            # get sgpc istance
-            try:
-                sgp: SGP = SGP.objects.get(id=key)
-            except ObjectDoesNotExist:
-                # sgp_pk was no valid primary key
-                print("sgp not valid error")
+            # one job each with all necessary information
+            sgp, latest_dataset, output_file, method = self.prepare_job(key, method)
+
+            if sgp:
+                jobs.append([sgp, latest_dataset, output_file, method])
+            else:
                 return jr_error
 
-            latest_dataset: Dataset = self.get_latest_dataset_from_SGP(sgp)
-            print(f"initializing linking method {method} for dataset with pk: {latest_dataset.pk}")
+            append_linking_step(sgp, method, latest_dataset.pk, output_file.pk)
 
-            method, output_pk = self.handle_linking(latest_dataset.pk, method)
+        response.PROCESS_DATA = jobs
 
-        self.append_linking_step(sgp, method, latest_dataset.pk, output_pk)
+        return response
 
-        return Response()
+    def prepare_job(self, key, method):
+        # get SGP istance
+        try:
+            sgp: SGP = SGP.objects.get(id=key)
+        except ObjectDoesNotExist:
+            # sgp_pk was no valid primary key
+            print("sgp not valid error")
+            return False
+
+        # load the latest dataset from sgp
+        latest_dataset: Dataset = self.get_latest_dataset_from_SGP(sgp)
+        output_file = create_new_result_file_field(
+            self.suffix_filename_with_sgp(sgp, os.path.basename(latest_dataset.file_field.name)))
+        # print(f"initializing linking method {method} for dataset with pk: {latest_dataset.pk}")
+
+        # one job each with all necessary information
+        return sgp, latest_dataset, output_file, method
+
+    def suffix_filename_with_sgp(self, sgp, filename: str):
+        return f"{sgp.pk}_{len(sgp.provenanceRecord)}_{filename}"
 
     # depending on the last phase type in each sgp, this
     # function returns the latest dataset object in the sgp
