@@ -3,6 +3,7 @@
 # from rest_framework.response import Response
 # from django.http import JsonResponse
 import os
+import uuid
 from pathlib import Path
 
 from django.conf import settings
@@ -15,37 +16,46 @@ STORAGE_DIR = f"{settings.MEDIA_ROOT}/iknow_datasets_temp/"
 
 
 def handle_uploaded_file(file, filename):
+    """
+    Saves uploaded file to database and returns
+    the created dataset entry.
+    """
     # TODO:
     #   - error handling
 
     # create the model instance
     datasetentry = Dataset()
 
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
     # pathlib seems to be the way to handle paths across all OS
-    path = Path(f"{STORAGE_DIR}00_{filename}")
+    filepath = Path(f"{STORAGE_DIR}{unique_filename}")
 
     # write the file
-    with open(path, 'wb+') as destination:
+    with open(filepath, 'wb+') as destination:
         for chunk in file.chunks():
             destination.write(chunk)
 
-    # open the just written file to save it to the file_field
-    with open(path, 'rb') as doc_file:
+    # save file into database
+    with open(filepath, 'rb') as doc_file:
         datasetentry.file_field.save(filename, File(doc_file), save=True)
 
     # save the instance
     datasetentry.save()
 
+    # remove the temporary file
+    os.remove(filepath)
+
     return datasetentry
 
 
-def create_new_result_file_field(filename: str):
-    if len(filename) > 8:
-        filename = f'{filename[:-12]}.csv'
+def create_filefield(filename: str):
+    """
+    Creates dataset entry by creating new empty file.
+    """
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+    filepath = Path(f"{STORAGE_DIR}{unique_filename}")
 
-    filepath = Path(f"{STORAGE_DIR}{filename}")
-
-    # write new file
+    # write new empty temporary file
     with open(filepath, 'w') as my_new_csv_file:
         if my_new_csv_file:
             pass
@@ -54,11 +64,14 @@ def create_new_result_file_field(filename: str):
     # create the model instance
     datasetentry = Dataset()
 
-    # open the just written file to save it to the file_field
+    # save file into database
     with open(filepath, 'rb') as doc_file:
         datasetentry.file_field.save(filename, File(doc_file), save=True)
 
     # save the instance
     datasetentry.save()
+
+    # remove the temporary file
+    os.remove(filepath)
 
     return datasetentry

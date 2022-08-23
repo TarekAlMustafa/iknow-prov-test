@@ -27,7 +27,7 @@ def get_wikidata_entities(query: str):
     jsonerrorcounter = 0
     timeoutcounter = 0
 
-    while(not fin):
+    while (not fin):
         print("Sending request... Querylength: ", len(query))
         st = time.time()
         r = requests.post(URL, params={'format': 'json', 'query': query})
@@ -108,7 +108,6 @@ def list_of_dics_contains_key(value, dic_list):
 
 # write parts of the finished results to OUTPUT_FILE
 def save_progress(rows, OUTPUT_FILE):
-    print("ROWS: ", rows)
     with open(OUTPUT_FILE, 'a', newline='') as csvfile:
         spamwriter = csv.writer(csvfile, delimiter=',',
                                 quotechar='"', quoting=csv.QUOTE_MINIMAL)
@@ -160,7 +159,7 @@ def jsonResult_to_list(json, row_length: int, bin_col_types):
     resultList = []
 
     x = 0
-    while(x < len(helper)):
+    while (x < len(helper)):
         row = []
         for b in bin_col_types:
             if b == 0:

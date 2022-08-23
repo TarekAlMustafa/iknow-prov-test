@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
 
 from .models import SGPC, BioProject
@@ -10,34 +11,66 @@ from .models import SGPC, BioProject
 # everything else will be ignored or results in error message and nothing happening
 
 
+# TODO: - rewrite this with foreign key and or serializer!
 def createCollection(request):
+    """
+    Creates a new SGP instance connected to a given Bioproject.
+    Bioproject can be selected or newly created.
+    Returns sgpc.pk of the new instance on success.
+    """
     data: dict = request.data
 
-    # TODO: - rewrite this with foreign key and or serializer!
-    if type(data) == dict and 'data' in data.keys():
-        choice = data['data']['bioprojectname']
+    if not type(data) == dict or 'data' not in data.keys():
+        return JsonResponse({"error": "invalid request format"})
 
-        if data['data']['projectChoice'] == 'select':
-            for proj in BioProject.objects.all():
-                if proj.name == choice:
-                    new_collection = SGPC()
-                    new_collection.bioprojectname = proj.name
-                    new_collection.save()
-                    return JsonResponse({"project_id": new_collection.pk})
-        elif data['data']['projectChoice'] == 'create':
-            if not BioProject.name_exists(choice):
-                newProject = BioProject()
-                newProject.name = choice
-                newProject.save()
+    # name chosen by client
+    choice = data['data']['bioprojectname']
 
-            new_collection = SGPC()
-            new_collection.bioprojectname = choice
-            new_collection.save()
+    # client wants to select the project from existing ones
+    if data['data']['projectChoice'] == 'select':
+        for proj in BioProject.objects.all():
+            if proj.name == choice:
+                new_collection = SGPC()
+                new_collection.bioprojectname = proj.name
+                new_collection.save()
+                return JsonResponse({"project_id": new_collection.pk})
+    # client wants to create a new project
+    elif data['data']['projectChoice'] == 'create':
+        if not BioProject.name_exists(choice):
+            newProject = BioProject()
+            newProject.name = choice
+            newProject.save()
 
-            return JsonResponse({"project_id": new_collection.pk})
+        new_collection = SGPC()
+        new_collection.bioprojectname = choice
+        new_collection.save()
+
+        return JsonResponse({"project_id": new_collection.pk})
+
+
+def sgpc_from_key(key: str):
+    """
+    Returns a safely obtained instance of SGPC
+    from a given key.
+    """
+    if key is None:
+        return False
+
+    # get sgpc instance
+    try:
+        sgpc: SGPC = SGPC.objects.get(id=key)
+    except ObjectDoesNotExist:
+        # sgpc_pk was no valid primary key
+        return False
+
+    return sgpc
 
 
 def get_all_sgp_info():
+    """
+    Returns information about all sgp in the database,
+    for the client to display and choose from.
+    """
     info = [['Collectionname', 'Bioprojectname', 'Source dataset']]
     for sgpc in SGPC.objects.all():
         for sgp in sgpc.associated_sgprojects.all():
@@ -47,6 +80,10 @@ def get_all_sgp_info():
 
 
 def get_all_sgpc_info():
+    """
+    Returns information about all sgpc in the database,
+    for the client to display and choose from.
+    """
     info = [['Collectionname', 'Bioprojectname', '# associated graphs']]
 
     for sgpc in SGPC.objects.all():
@@ -56,12 +93,14 @@ def get_all_sgpc_info():
 
 
 def get_all_projects_name():
+    """
+    Returns information about all Bioprojects in the database,
+    for the client to display and choose from.
+    """
+
     info = [['--select one--']]
 
     for proj_name in BioProject.get_all_project_names():
         info.append([proj_name['name']])
-
-    # for name_dic in SGPC.objects.values('bioprojectname').distinct():
-    #     info.append([name_dic['bioprojectname']])
 
     return info
