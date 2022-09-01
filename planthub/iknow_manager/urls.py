@@ -4,8 +4,13 @@ from .views import (
     CleaningView,
     CreateCollectionView,
     DatasetInit,
+    EditCpaView,
+    EditMappingsView,
     FetchDataView,
+    FetchMappingsView,
+    FetchSubclassesView,
     LinkingView,
+    MappingView,
     ProjectNamesView,
     SGPCInfoView,
     SGPInfoView,
@@ -57,6 +62,15 @@ urlpatterns = [
     # [multiple, parameterized]
     # path('datasets_data', DatasetDataView.as_view()),
 
+    path('findMappings', MappingView.as_view()),
+
+    path('fetchMappings', FetchMappingsView.as_view()),
+
+    path('fetchSubclasses', FetchSubclassesView.as_view()),
+
+    path('editMappings', EditMappingsView.as_view()),
+
+    path('editcpa', EditCpaView.as_view()),
 
     # path('history', ProjectHistoryView.as_view()),
 ]

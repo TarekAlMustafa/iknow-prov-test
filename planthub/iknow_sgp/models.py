@@ -25,5 +25,9 @@ class SGP(models.Model):
     # TODO: - mark layout as comment here
     provenanceRecord = models.JSONField(default=dict)
 
+    cpaMappings = models.JSONField(default=dict)
+
+    original_table_header = models.JSONField(default=dict)
+
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)

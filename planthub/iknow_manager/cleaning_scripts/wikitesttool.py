@@ -152,7 +152,7 @@ def jsonResult_to_list(json, row_length: int, bin_col_types):
 
     for i, element in enumerate(helper):
         if len(element) == 1:
-            helper[i].append('NULL')
+            helper[i].append('NORESULT')
 
     helper = sorted(helper)
 
@@ -163,7 +163,7 @@ def jsonResult_to_list(json, row_length: int, bin_col_types):
         row = []
         for b in bin_col_types:
             if b == 0:
-                row.append("")
+                row.append("NOSEARCH")
             elif b == 1:
                 row.append(helper[x][1])
                 x += 1
@@ -173,11 +173,21 @@ def jsonResult_to_list(json, row_length: int, bin_col_types):
     return resultList
 
 
+def write_header_to_output(OUTPUT_FILE, header):
+    with open(OUTPUT_FILE, 'a', newline='') as csvfile:
+        spamwriter = csv.writer(csvfile, delimiter=',',
+                                quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        spamwriter.writerow(header)
+
+
 def main(INPUT_FILE, OUTPUT_FILE, COL_TYPES, NUM_QUERY_ENTITIES=50):
     # ENTRY POINT
     # read file into memory
     print(f"Reading file: {INPUT_FILE}")
     df = pd.read_csv(INPUT_FILE)
+
+    write_header_to_output(OUTPUT_FILE, list(df.columns.values))
 
     toSearchPerRow = 0
     species_columns = []

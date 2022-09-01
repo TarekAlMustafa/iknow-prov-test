@@ -44,6 +44,9 @@ class SGPC(models.Model):
     # all associated sgprojects (should be only assigned once and not changed afterwards)
     associated_sgprojects = models.ManyToManyField(SGP)
 
+    cpaMappings = models.JSONField(default=dict)
+
+    subclassMappings = models.JSONField(default=dict)
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)
 

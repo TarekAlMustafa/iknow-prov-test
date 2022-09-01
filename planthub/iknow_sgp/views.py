@@ -3,6 +3,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 
 from planthub.iknow_datasets.models import Dataset
+from planthub.iknow_datasets.views import dataset_from_key
 
 from .models import SGP
 
@@ -37,25 +38,35 @@ def sgp_from_key(key: str):
     return sgp
 
 
+def set_phase_state(sgp: SGP, new_state: str):
+    """
+    Set the state of the current phase in the provenance
+    record of the given sgp.
+    """
+    cur_step = str(len(sgp.provenanceRecord)-1)
+    sgp.provenanceRecord[cur_step]["state"] = new_state
+    sgp.save()
+
+
 def append_linking_step(sgp: SGP, method, input_pk, output_pk):
     """
     On start of linking tool, appends information
     in the provenance record.
     """
-    cur_step = len(sgp.provenanceRecord)
-    sgp.provenanceRecord[cur_step] = {}
-    sgp.provenanceRecord[cur_step]["type"] = "linking"
-    sgp.provenanceRecord[cur_step]["actions"] = {}
-    sgp.provenanceRecord[cur_step]["actions"]["input"] = input_pk
-    sgp.provenanceRecord[cur_step]["actions"]["output"] = output_pk
-    sgp.provenanceRecord[cur_step]["actions"]["method"] = method
-    sgp.provenanceRecord[cur_step]["state"] = "running"
+    next_step = str(len(sgp.provenanceRecord))
+    sgp.provenanceRecord[next_step] = {}
+    sgp.provenanceRecord[next_step]["type"] = "linking"
+    sgp.provenanceRecord[next_step]["actions"] = {}
+    sgp.provenanceRecord[next_step]["actions"]["input"] = input_pk
+    sgp.provenanceRecord[next_step]["actions"]["output"] = output_pk
+    sgp.provenanceRecord[next_step]["actions"]["method"] = method
+    sgp.provenanceRecord[next_step]["state"] = "running"
 
     sgp.save()
 
 
 def append_cleaning_step(self, sgp: SGP, method, d_pk_in, d_pk_out):
-    cur_step = len(sgp.provenanceRecord)
+    cur_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[cur_step] = {}
     sgp.provenanceRecord[cur_step]["type"] = "cleaning"
     sgp.provenanceRecord[cur_step]["actions"] = {}
@@ -69,24 +80,69 @@ def append_cleaning_step(self, sgp: SGP, method, d_pk_in, d_pk_out):
 def get_latest_dataset(sgp: SGP) -> Dataset:
     """
     Return the latest dataset for the given sgp.
-    [Not completely implemented]
     """
+
+    cur_step_num = len(sgp.provenanceRecord)-1
+
     # <= 1 ... INIT PHASE
-    if len(sgp.provenanceRecord) <= 1:
+    if cur_step_num <= 0:
         # print("The source dataset for sgp: ", sgp.pk, " is ", sgp.source_dataset.all()[0])
         return sgp.source_dataset.all()[0]
     else:
-        last_phasetype = get_last_phasetype(sgp)
+        if str(cur_step_num) in sgp.provenanceRecord:
+            if "actions" in sgp.provenanceRecord[str(cur_step_num)]:
+                if "output" in sgp.provenanceRecord[str(cur_step_num)]["actions"]:
+                    dataset_pk = sgp.provenanceRecord[str(cur_step_num)]["actions"]["output"]
 
-        # CLEANING PHASE
-        if last_phasetype == "cleaning":
-            return sgp.source_dataset.all()[0]
-        # LINKING PHASE
-        elif last_phasetype == "linking":
-            return sgp.source_dataset.all()[0]
-        # ELSE
-        else:
-            return sgp.source_dataset.all()[0]
+                    dataset = dataset_from_key(dataset_pk)
+
+                    return dataset
+
+        # else... some error happend or something went wrong along the way
+        return False
+
+
+def get_latest_input_dataset(sgp: SGP) -> Dataset:
+
+    cur_step_num = len(sgp.provenanceRecord)-1
+
+    # <= 1 ... INIT PHASE
+    if cur_step_num <= 0:
+        # print("The source dataset for sgp: ", sgp.pk, " is ", sgp.source_dataset.all()[0])
+        return sgp.source_dataset.all()[0]
+    else:
+        if str(cur_step_num) in sgp.provenanceRecord:
+            if "actions" in sgp.provenanceRecord[str(cur_step_num)]:
+                if "input" in sgp.provenanceRecord[str(cur_step_num)]["actions"]:
+                    dataset_pk = sgp.provenanceRecord[str(cur_step_num)]["actions"]["input"]
+
+                    dataset = dataset_from_key(dataset_pk)
+
+                    return dataset
+
+        # else... some error happend or something went wrong along the way
+        return False
+
+
+def get_column_types(sgp: SGP, binary=False):
+    selections = sgp.provenanceRecord['0']['selection']
+    col_types = []
+
+    for x in range(len(selections['type'].keys())):
+        try:
+            if binary:
+                type = selections['type'][str(x)]
+                if type == 'String':
+                    col_types.append(1)
+                else:
+                    col_types.append(0)
+            else:
+                col_types.append(selections['type'][str(x)])
+        except (Exception):
+            print(f"Error: Key not were its supposed to be in prov rec {sgp.pk} ")
+            return False
+
+    return col_types
 
 
 def get_last_phasetype(sgp: SGP):
@@ -107,6 +163,37 @@ def get_last_phasetype(sgp: SGP):
 def is_in_progress(sgp: SGP):
     """
     Checks if tool is running for a given sgp.
-    [Not completely implemented]
     """
-    return False
+    cur_step = str(len(sgp.provenanceRecord)-1)
+
+    if cur_step not in sgp.provenanceRecord:
+        return False
+
+    if "state" not in sgp.provenanceRecord[cur_step]:
+        return False
+
+    cur_state = sgp.provenanceRecord[cur_step]["state"]
+    if cur_state == "running":
+        return True
+    else:
+        return False
+
+
+# this function was rushed and probably has bugs and errors. For the simple case
+# its working now. But change it later.
+def get_mapping_file(sgp: SGP):
+    cur_step_int = len(sgp.provenanceRecord)-1
+
+    if str(cur_step_int) not in sgp.provenanceRecord:
+        return False
+
+    if sgp.provenanceRecord[str(cur_step_int)]['type'] == 'linking':
+        return get_latest_dataset(sgp)
+
+    for i in range(cur_step_int, 0, -1):
+        if sgp.provenanceRecord[str(i)]['type'] == 'linking':
+            dataset_pk = sgp.provenanceRecord[str(i)]["actions"]["output"]
+
+            dataset = dataset_from_key(dataset_pk)
+
+            return dataset

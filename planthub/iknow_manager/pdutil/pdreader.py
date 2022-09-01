@@ -13,6 +13,7 @@ def get_list_from_csv(path: str, header=None):
 def get_list_from_csv_first10rows(path: str, header=None):
     frame = pd.read_csv(path, header=header, quotechar="'", nrows=11)
     frame_list = frame.values.tolist()
+    print(frame_list)
 
     return frame_list
 

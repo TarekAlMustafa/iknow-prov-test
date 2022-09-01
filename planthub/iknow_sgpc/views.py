@@ -1,6 +1,8 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
 
+from planthub.iknow_sgp.views import is_in_progress
+
 from .models import SGPC, BioProject
 
 # from .serializer import CreateCollectionSerializer
@@ -104,3 +106,17 @@ def get_all_projects_name():
         info.append([proj_name['name']])
 
     return info
+
+
+def is_in_progress_sgpc(sgpc: SGPC):
+    """
+    Checks if tool is running for a given sgpc.
+    Calls is_in_progress on each sgp.
+    """
+
+    for sgp in sgpc.associated_sgprojects.all():
+        if is_in_progress(sgp):
+            return True
+
+    # no sgp is still in progress
+    return False

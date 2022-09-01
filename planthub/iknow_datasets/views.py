@@ -7,6 +7,7 @@ import uuid
 from pathlib import Path
 
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 
 from .models import Dataset
@@ -75,3 +76,22 @@ def create_filefield(filename: str):
     os.remove(filepath)
 
     return datasetentry
+
+
+def dataset_from_key(key: str):
+    """
+    Returns a safely obtained instance of SGP
+    from a given key.
+    """
+    if key is None:
+        return False
+
+    # get SGP istance
+    try:
+        dataset: Dataset = Dataset.objects.get(id=key)
+    except ObjectDoesNotExist:
+        # sgp_pk was no valid primary key
+        print("dataset pk not valid error")
+        return False
+
+    return dataset

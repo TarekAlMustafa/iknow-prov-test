@@ -1,6 +1,7 @@
 import json
 import os
 
+import pandas as pd
 from django.http import HttpResponse, JsonResponse
 # from iknow_tools.views import get_all_tools_workflow_info
 from rest_framework.response import Response
@@ -11,11 +12,16 @@ from rest_framework.views import APIView
 
 from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
+from planthub.iknow_manager.models import CPAmapping
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
     append_linking_step,
     create_sgp,
+    get_column_types,
     get_latest_dataset,
+    get_latest_input_dataset,
+    get_mapping_file,
+    set_phase_state,
     sgp_from_key,
 )
 from planthub.iknow_sgpc.models import SGPC
@@ -24,10 +30,11 @@ from planthub.iknow_sgpc.views import (
     get_all_projects_name,
     get_all_sgp_info,
     get_all_sgpc_info,
+    is_in_progress_sgpc,
     sgpc_from_key,
 )
 
-from .cleaning_scripts import wikitesttool
+from .cleaning_scripts import findsubclasses, wikitesttool
 # from .pdutil.pdconverter import append_boolean_list
 from .pdutil.pdreader import (  # get_json_from_csv,; get_list_from_csv,
     get_list_from_csv_first10rows,
@@ -87,10 +94,23 @@ class UploadToCollectionView(APIView):
             new_sgp.source_dataset.add(new_dataset)
             sgpc.associated_sgprojects.add(new_sgp)
 
+            header = self.get_dataset_header(new_dataset.file_field.path)
+            new_sgp.original_table_header = header
+            new_sgp.save()
             # print("created new sgp with id: ", new_sgp.id)
             # print("adding sgp to sgpc: ", sgpc.pk)
 
         return JsonResponse({"msg": "success"})
+
+    def get_dataset_header(self, filepath):
+        df = pd.read_csv(filepath)
+        header = list(df.head())
+
+        dic_header = {}
+        for i, entry in enumerate(header):
+            dic_header[str(i)] = entry
+
+        return dic_header
 
 
 class FetchDataView(APIView):
@@ -105,16 +125,79 @@ class FetchDataView(APIView):
         if sgpc is False:
             return jr_error
 
+        if is_in_progress_sgpc(sgpc):
+            return jr_error
+
         # requires filenames, requires dataset content
         req_names = (request.GET.get('names', '') != '')
         req_datasets = (request.GET.get('datasets', '') != '')
+        req_type = request.GET.get('type', '')
 
-        data = self.prepare_datasets(sgpc, req_names, req_datasets)
+        if req_type == "cleaning":
+            data = self.prepare_datasets(sgpc, req_names, req_datasets)
+        if req_type == "linking":
+            data = self.prepare_linking_result(sgpc, req_names, req_datasets)
+        else:
+            data = self.prepare_datasets(sgpc, req_names, req_datasets)
 
-        # print("returning prepared datasets: ", prepared_datasets)
+        # print("returning prepared datasets: ", data)
+        # print(type(data))
         response = JsonResponse(data, safe=False)
+        # for key in data:
+        #     print(f"Key: {key} value: {data[key]}")
 
+        # return Response()
         return response
+
+    def prepare_linking_result(self, sgpc: SGPC, req_names: bool, req_datasets: bool):
+        """
+        Load and return content and required information on all
+        datasets in a sgpc.
+        """
+        prepared_datasets = {}
+
+        for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+            # print("sgp.id: ", sgp.id, " sgp.bioprojectname: ", sgp.bioprojectname)
+            helper = {}
+            helper["sgp_pk"] = sgp.pk
+
+            # if req_names:
+            #     helper["filename"] = os.path.basename(input_dataset.file_field.name)
+
+            helper["dataset"] = self.load_unique_mappings(sgp)
+
+            prepared_datasets[i] = helper
+
+        return prepared_datasets
+
+    def load_unique_mappings(self, sgp):
+        input_dataset = get_latest_input_dataset(sgp)
+        result_df = get_latest_dataset(sgp)
+
+        input_df = pd.read_csv(input_dataset.file_field.path)
+        result_df = pd.read_csv(result_df.file_field.path)
+
+        col_types = get_column_types(sgp, binary=True)
+
+        all_mappings = {}
+
+        for i, col_name in enumerate(input_df):
+            if col_types[i]:
+                col_mappings = self.load_unique_col_mappings(input_df[col_name], result_df[col_name], col_name)
+                all_mappings[str(i)] = col_mappings
+
+        return all_mappings
+
+    def load_unique_col_mappings(self, col, result_col, col_name):
+        already_seen = []
+        mappings = [[col_name, f"{col_name} links"]]
+
+        for i, cell_value in enumerate(col):
+            if cell_value not in already_seen:
+                already_seen.append(cell_value)
+                mappings.append([cell_value, str(result_col[i])])
+
+        return mappings
 
     def prepare_datasets(self, sgpc: SGPC, req_names: bool, req_datasets: bool):
         """
@@ -202,7 +285,6 @@ class LinkingtoolsResponse(HttpResponse):
         if self.status_code == 200:
             for i, job in enumerate(self.PROCESS_DATA):
                 # assign necessary information
-                selections = job[0].provenanceRecord['0']['selection']
                 input_file_path = job[1].file_field.path
                 output_path = job[2].file_field.path
                 method = job[3]
@@ -211,19 +293,15 @@ class LinkingtoolsResponse(HttpResponse):
                 # TODO:
                 #   - own function, cased on method
                 print(f"Running Job with method: {method} for file: {input_file_path}.")
-                col_types = []
-                for x in range(len(selections['type'].keys())):
-                    try:
-                        col_types.append(selections['type'][str(x)])
-                    except (Exception):
-                        print(f"Error: Key not were its supposed to be in prov rec {job[0].pk} ")
-                        return
+                col_types = get_column_types(job[0])
 
                 # RUNS QUERY ONLY FOR String-type columns!!!
                 wikitesttool.main(
                     INPUT_FILE=input_file_path,
                     OUTPUT_FILE=output_path,
                     COL_TYPES=col_types)
+
+                set_phase_state(job[0], "done")
 
 
 class LinkingView(APIView):
@@ -274,7 +352,7 @@ class LinkingView(APIView):
         sgp = sgp_from_key(key)
         latest_dataset: Dataset = get_latest_dataset(sgp)
         output_file = create_filefield(
-            self.suffix_filename_with_sgp(sgp, os.path.basename(latest_dataset.file_field.name)))
+            self.suffix_filename_with_sgp(sgp, "output.csv"))
 
         # one job each with all necessary information
         return sgp, latest_dataset, output_file
@@ -285,6 +363,212 @@ class LinkingView(APIView):
         of the provenance record. [Change this later!]
         """
         return f"{sgp.pk}_{len(sgp.provenanceRecord)}_{filename}"
+
+
+class MappingView(APIView):
+    def post(self, request):
+        json_data = json.loads(request.body)["requestdata"]
+
+        # check if the desired key is there
+        if "sgpc_pk" not in json_data.keys():
+            return jr_error
+        sgpc_pk = json_data["sgpc_pk"]
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        for sgp in sgpc.associated_sgprojects.all():
+            self.find_mappings(sgp)
+
+        return Response()
+
+    def find_mappings(self, sgp: SGP):
+        mappings_helper = {}
+        col_mappings = sgp.provenanceRecord['0']['selection']['mapping']
+
+        key_counter = 0
+        for key in col_mappings:
+            print(col_mappings[key])
+            for triple in CPAmapping.objects.filter(s=col_mappings[key]):
+                if triple.o in col_mappings.values():
+                    mappings_helper[key_counter] = [triple.s, triple.sLabel, triple.p,
+                                                    triple.pLabel, triple.o, triple.oLabel]
+                    key_counter += 1
+                    print(mappings_helper)
+
+        sgp.cpaMappings = mappings_helper
+        sgp.save()
+
+
+class FetchSubclassesView(APIView):
+    def get(self, request):
+        # get parameters from request
+        sgpc_pk = request.GET.get('sgpc_pk', default=None)
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        all_subclasses = {'sgpc_pk': sgpc_pk}
+
+        if (len(sgpc.subclassMappings) == 0):
+            result = self.find_subclasses(sgpc)
+            counter = 0
+            subclasses_to_save = {}
+            for s in result:
+                for parent in result[s]['parentclasses']:
+                    helper = {'s': result[s]['label'], 'o': parent}
+                    subclasses_to_save[str(counter)] = helper
+                    counter += 1
+
+            sgpc.subclassMappings = subclasses_to_save
+            sgpc.save()
+
+        all_subclasses['mappings'] = sgpc.subclassMappings
+
+        response = JsonResponse(all_subclasses)
+
+        return response
+
+    def find_subclasses(self, sgpc: SGPC):
+        headers = []
+        for sgp in sgpc.associated_sgprojects.all():
+            for entry in sgp.provenanceRecord['0']['selection']['mapping'].values():
+                headers.append(entry)
+        result = findsubclasses.main(headers, "")
+
+        return result
+
+
+class EditMappingsView(APIView):
+    def post(self, request):
+        # get parameters from request
+        data = json.loads(request.body)["requestdata"]
+
+        sgpc_pk = data['sgpc_pk']
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        for sgp_number in data['edits']:
+            sgp = sgp_from_key(sgp_number)
+            if sgp is False:
+                return jr_error
+
+            self.apply_mapping_edits_to_sgp(sgp, data['edits'][sgp_number])
+
+        return Response()
+
+    def apply_mapping_edits_to_sgp(self, sgp: SGP, edits):
+        # print("Applying edits: ")
+        # print(edits)
+        # print("to sgp ", sgp.pk)
+        mapping_file = get_mapping_file(sgp)
+        print("Found Mapping file: ", mapping_file.file_field.name)
+        df = pd.read_csv(mapping_file.file_field.path)
+
+        for key in edits:
+            col = int(edits[key]['col'])
+            row = int(edits[key]['row'])
+            print(f"col: {col} row: {row} original_val: {df.iat[row, col]}")
+            df.iat[row, col] = str(edits[key]['value'])
+
+        df.to_csv(mapping_file.file_field.path, index=False)
+
+
+class EditCpaView(APIView):
+    def post(self, request):
+        # get parameters from request
+        data = json.loads(request.body)["requestdata"]
+        # print(data)
+
+        sgpc_pk = data['sgpc_pk']
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        mapping_copy = sgpc.cpaMappings
+        # print(mapping_copy)
+
+        for deletion in data['deleted']:
+            for key in mapping_copy:
+                if (deletion['s'] == mapping_copy[key][0] and
+                   deletion['p'] == mapping_copy[key][2] and
+                   deletion['o'] == mapping_copy[key][4]):
+                    # print("deleting ", mapping_copy[key])
+                    del mapping_copy[key]
+                    break
+
+        sgpc.cpaMappings = mapping_copy
+        sgpc.save()
+
+        return Response()
+
+
+class FetchMappingsView(APIView):
+    def get(self, request):
+        # get parameters from request
+        sgpc_pk = request.GET.get('sgpc_pk', default=None)
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        all_mappings = {'sgpc_pk': sgpc_pk}
+
+        if (len(sgpc.cpaMappings) == 0):
+            self.find_mappings(sgpc)
+
+        # for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+        #     if (len(sgp.cpaMappings) == 0):
+        #         self.find_mappings(sgp)
+
+        #     all_mappings[str(i)] = {}
+        #     all_mappings[str(i)]["sgp_pk"] = sgp.pk
+        #     all_mappings[str(i)]["mappings"] = sgp.cpaMappings
+        #     all_mappings[str(i)]["header"] = self.header_json_to_list(sgp.original_table_header)
+
+        all_mappings["mappings"] = sgpc.cpaMappings
+        all_mappings["header"] = self.collect_original_headers(sgpc)
+
+        response = JsonResponse(all_mappings)
+
+        return response
+
+    def header_json_to_list(self, json_header):
+        helper = []
+        for key in json_header:
+            helper.append(json_header[key])
+        return helper
+
+    def find_mappings(self, sgpc: SGPC):
+        mappings_helper = {}
+
+        for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+            col_mappings = sgp.provenanceRecord['0']['selection']['mapping']
+
+            key_counter = 0
+            for key in col_mappings:
+                print(col_mappings[key])
+                for triple in CPAmapping.objects.filter(s=col_mappings[key]):
+                    if triple.o in col_mappings.values():
+                        mappings_helper[key_counter] = [triple.s, triple.sLabel, triple.p,
+                                                        triple.pLabel, triple.o, triple.oLabel]
+                        key_counter += 1
+
+        sgpc.cpaMappings = mappings_helper
+        sgpc.save()
+
+    def collect_original_headers(self, sgpc: SGPC):
+        header = []
+        for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+            header += self.header_json_to_list(sgp.original_table_header)
+
+        print(header)
+        return header
 
 
 class SGPInfoView(APIView):
