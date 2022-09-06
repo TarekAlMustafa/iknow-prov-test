@@ -1,5 +1,4 @@
 import json
-import os
 
 import pandas as pd
 from django.http import HttpResponse, JsonResponse
@@ -25,7 +24,7 @@ from planthub.iknow_sgp.views import (
     sgp_from_key,
 )
 from planthub.iknow_sgpc.models import SGPC
-from planthub.iknow_sgpc.views import (
+from planthub.iknow_sgpc.views import (  # get_all_header_mappings,
     createCollection,
     get_all_projects_name,
     get_all_sgp_info,
@@ -92,6 +91,7 @@ class UploadToCollectionView(APIView):
             new_dataset = handle_uploaded_file(request.FILES[key], filename)
             new_sgp = create_sgp(sgpc.bioprojectname)
             new_sgp.source_dataset.add(new_dataset)
+            new_sgp.original_filename = filename
             sgpc.associated_sgprojects.add(new_sgp)
 
             header = self.get_dataset_header(new_dataset.file_field.path)
@@ -161,8 +161,8 @@ class FetchDataView(APIView):
             helper = {}
             helper["sgp_pk"] = sgp.pk
 
-            # if req_names:
-            #     helper["filename"] = os.path.basename(input_dataset.file_field.name)
+            if req_names:
+                helper["filename"] = sgp.original_filename
 
             helper["dataset"] = self.load_unique_mappings(sgp)
 
@@ -213,7 +213,7 @@ class FetchDataView(APIView):
             helper["sgp_pk"] = sgp.pk
 
             if req_names:
-                helper["filename"] = os.path.basename(dataset.file_field.name)
+                helper["filename"] = sgp.original_filename
             if req_datasets:
                 helper["dataset"] = get_list_from_csv_first10rows(dataset.file_field.path)
 
@@ -491,7 +491,7 @@ class EditCpaView(APIView):
             return jr_error
 
         mapping_copy = sgpc.cpaMappings
-        # print(mapping_copy)
+        # header_mappings = get_all_header_mappings(sgpc)
 
         for deletion in data['deleted']:
             for key in mapping_copy:
@@ -502,7 +502,57 @@ class EditCpaView(APIView):
                     del mapping_copy[key]
                     break
 
+        for key, value in data['added'].items():
+            next_key = get_next_unused_key(mapping_copy)
+            print("NEXT KEY", next_key, " TYPE: ", type(next_key))
+            # print("TYPEADD: ", type(addition))
+            # print("ADD: ", addition)
+            print("TYPEMAP: ", type(mapping_copy))
+
+            mapping_copy[next_key] = [value['s'], "", value['p'], "", value['o'], ""]
+
         sgpc.cpaMappings = mapping_copy
+        sgpc.save()
+
+        return Response()
+
+
+class EditSchemaView(APIView):
+    def post(self, request):
+        # get parameters from request
+        data = json.loads(request.body)["requestdata"]
+        # print(data)
+
+        sgpc_pk = data['sgpc_pk']
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        schemaCopy = sgpc.subclassMappings
+        # print(mapping_copy)
+
+        for deletion in data['deleted']:
+            for key, valueDic in schemaCopy.items():
+                if (deletion['s'] == valueDic['s'] and
+                   deletion['o'] == valueDic['o']):
+                    print("Deleted: ", schemaCopy[key])
+                    del schemaCopy[key]
+                    break
+
+        for key, value in data['added'].items():
+            next_key = get_next_unused_key(schemaCopy)
+            # print("NEXT KEY", next_key, " TYPE: ", type(next_key))
+            # print("TYPEADD: ", type(addition))
+            # print("ADD: ", addition)
+
+            schemaCopy[next_key] = {}
+            schemaCopy[next_key]['s'] = value['s']
+            schemaCopy[next_key]['o'] = value['o']
+
+            print("Added: ", schemaCopy[next_key])
+
+        sgpc.subclassMappings = schemaCopy
         sgpc.save()
 
         return Response()
@@ -587,3 +637,13 @@ class ProjectNamesView(APIView):
     def get(self, request):
         response = JsonResponse({"projectNames": get_all_projects_name()})
         return response
+
+
+def get_next_unused_key(somedic: dict):
+    for i in range(10000):
+        if str(i) in somedic:
+            i += 1
+        else:
+            return str(i)
+
+    return False

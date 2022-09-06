@@ -1,7 +1,11 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
 
-from planthub.iknow_sgp.views import is_in_progress
+from planthub.iknow_sgp.views import (
+    get_header_mapping,
+    get_original_header,
+    is_in_progress,
+)
 
 from .models import SGPC, BioProject
 
@@ -120,3 +124,15 @@ def is_in_progress_sgpc(sgpc: SGPC):
 
     # no sgp is still in progress
     return False
+
+
+def get_all_header_mappings(sgpc: SGPC):
+    all_header_mappings = []
+
+    for sgp in sgpc.associated_sgprojects.all():
+        original_header = get_original_header(sgp)
+        header_mapping = get_header_mapping(sgp)
+        for i, entry in enumerate(original_header):
+            all_header_mappings.append([entry, header_mapping[i]])
+
+    return all_header_mappings

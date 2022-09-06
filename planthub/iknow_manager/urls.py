@@ -6,6 +6,7 @@ from .views import (
     DatasetInit,
     EditCpaView,
     EditMappingsView,
+    EditSchemaView,
     FetchDataView,
     FetchMappingsView,
     FetchSubclassesView,
@@ -71,6 +72,8 @@ urlpatterns = [
     path('editMappings', EditMappingsView.as_view()),
 
     path('editcpa', EditCpaView.as_view()),
+
+    path('editschema', EditSchemaView.as_view()),
 
     # path('history', ProjectHistoryView.as_view()),
 ]

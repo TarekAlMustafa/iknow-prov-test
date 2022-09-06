@@ -197,3 +197,11 @@ def get_mapping_file(sgp: SGP):
             dataset = dataset_from_key(dataset_pk)
 
             return dataset
+
+
+def get_header_mapping(sgp: SGP):
+    return list(sgp.provenanceRecord['0']['selection']['mapping'].values())
+
+
+def get_original_header(sgp: SGP):
+    return list(sgp.original_table_header.values())

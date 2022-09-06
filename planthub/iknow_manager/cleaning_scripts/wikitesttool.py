@@ -185,6 +185,7 @@ def main(INPUT_FILE, OUTPUT_FILE, COL_TYPES, NUM_QUERY_ENTITIES=50):
     # ENTRY POINT
     # read file into memory
     print(f"Reading file: {INPUT_FILE}")
+    print("COL_TYPES: ", COL_TYPES)
     df = pd.read_csv(INPUT_FILE)
 
     write_header_to_output(OUTPUT_FILE, list(df.columns.values))

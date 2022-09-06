@@ -29,5 +29,7 @@ class SGP(models.Model):
 
     original_table_header = models.JSONField(default=dict)
 
+    original_filename = models.CharField(max_length=4096, default="")
+
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)
