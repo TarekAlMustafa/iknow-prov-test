@@ -9,12 +9,15 @@ from .views import (
     EditSchemaView,
     FetchDataView,
     FetchMappingsView,
+    FetchProvrecView,
     FetchSubclassesView,
     LinkingView,
     MappingView,
     ProjectNamesView,
+    ResetCollectionView,
     SGPCInfoView,
     SGPInfoView,
+    SingleSGPCInfoView,
     UploadToCollectionView,
 )
 
@@ -57,11 +60,15 @@ urlpatterns = [
 
     path('all-sgpc-info', SGPCInfoView.as_view()),
 
+    path('single-sgpc-info', SingleSGPCInfoView.as_view()),
+
     path('getProjectsName', ProjectNamesView.as_view()),
     # returns dataset data etc. for specific sgproject
     # this might be a good one to merge into
     # [multiple, parameterized]
     # path('datasets_data', DatasetDataView.as_view()),
+
+    path('fetch-provrec', FetchProvrecView.as_view()),
 
     path('findMappings', MappingView.as_view()),
 
@@ -75,5 +82,6 @@ urlpatterns = [
 
     path('editschema', EditSchemaView.as_view()),
 
+    path('resetcollectionto', ResetCollectionView.as_view()),
     # path('history', ProjectHistoryView.as_view()),
 ]

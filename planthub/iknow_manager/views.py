@@ -13,22 +13,27 @@ from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
 from planthub.iknow_manager.models import CPAmapping
 from planthub.iknow_sgp.models import SGP
-from planthub.iknow_sgp.views import (
+from planthub.iknow_sgp.views import (  # append_editMapping_step,
+    append_editCpa_step,
     append_linking_step,
+    append_schemaRefine_step,
     create_sgp,
     get_column_types,
     get_latest_dataset,
     get_latest_input_dataset,
     get_mapping_file,
+    get_provrec,
     set_phase_state,
     sgp_from_key,
 )
 from planthub.iknow_sgpc.models import SGPC
-from planthub.iknow_sgpc.views import (  # get_all_header_mappings,
+from planthub.iknow_sgpc.views import (  # get_all_header_mappings,; get_history_sgpc,
     createCollection,
     get_all_projects_name,
     get_all_sgp_info,
     get_all_sgpc_info,
+    get_history_sgpc_renamed,
+    get_single_sgpc_info,
     is_in_progress_sgpc,
     sgpc_from_key,
 )
@@ -38,6 +43,8 @@ from .cleaning_scripts import findsubclasses, wikitesttool
 from .pdutil.pdreader import (  # get_json_from_csv,; get_list_from_csv,
     get_list_from_csv_first10rows,
 )
+
+# import time
 
 # from copyreg import constructor
 
@@ -126,19 +133,21 @@ class FetchDataView(APIView):
             return jr_error
 
         if is_in_progress_sgpc(sgpc):
+            print("Error in FetchDataView: sgpc ", sgpc.pk, " is still running.")
             return jr_error
 
         # requires filenames, requires dataset content
         req_names = (request.GET.get('names', '') != '')
         req_datasets = (request.GET.get('datasets', '') != '')
+        req_history = (request.GET.get('history', '') != '')
         req_type = request.GET.get('type', '')
 
         if req_type == "cleaning":
-            data = self.prepare_datasets(sgpc, req_names, req_datasets)
+            data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history)
         if req_type == "linking":
-            data = self.prepare_linking_result(sgpc, req_names, req_datasets)
+            data = self.prepare_linking_result(sgpc, req_names, req_datasets, req_history)
         else:
-            data = self.prepare_datasets(sgpc, req_names, req_datasets)
+            data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history)
 
         # print("returning prepared datasets: ", data)
         # print(type(data))
@@ -149,7 +158,7 @@ class FetchDataView(APIView):
         # return Response()
         return response
 
-    def prepare_linking_result(self, sgpc: SGPC, req_names: bool, req_datasets: bool):
+    def prepare_linking_result(self, sgpc: SGPC, req_names: bool, req_datasets: bool, req_history: bool):
         """
         Load and return content and required information on all
         datasets in a sgpc.
@@ -165,6 +174,9 @@ class FetchDataView(APIView):
                 helper["filename"] = sgp.original_filename
 
             helper["dataset"] = self.load_unique_mappings(sgp)
+
+            if req_history and i == 0:
+                helper["history"] = get_history_sgpc_renamed(sgpc)
 
             prepared_datasets[i] = helper
 
@@ -199,7 +211,7 @@ class FetchDataView(APIView):
 
         return mappings
 
-    def prepare_datasets(self, sgpc: SGPC, req_names: bool, req_datasets: bool):
+    def prepare_datasets(self, sgpc: SGPC, req_names: bool, req_datasets: bool, req_history: bool):
         """
         Load and return content and required information on all
         datasets in a sgpc.
@@ -216,6 +228,8 @@ class FetchDataView(APIView):
                 helper["filename"] = sgp.original_filename
             if req_datasets:
                 helper["dataset"] = get_list_from_csv_first10rows(dataset.file_field.path)
+            if req_history and i == 0:
+                helper["history"] = get_history_sgpc_renamed(sgpc)
 
             prepared_datasets[i] = helper
 
@@ -365,6 +379,7 @@ class LinkingView(APIView):
         return f"{sgp.pk}_{len(sgp.provenanceRecord)}_{filename}"
 
 
+# there is much redundant code here, also history data is missing
 class MappingView(APIView):
     def post(self, request):
         json_data = json.loads(request.body)["requestdata"]
@@ -426,6 +441,7 @@ class FetchSubclassesView(APIView):
             sgpc.save()
 
         all_subclasses['mappings'] = sgpc.subclassMappings
+        all_subclasses['history'] = get_history_sgpc_renamed(sgpc)
 
         response = JsonResponse(all_subclasses)
 
@@ -459,6 +475,11 @@ class EditMappingsView(APIView):
 
             self.apply_mapping_edits_to_sgp(sgp, data['edits'][sgp_number])
 
+        # this makes no sense if we can't reconstruct the mapping
+        # without edits
+        # for sgp in sgpc.associated_sgprojects.all():
+        #     append_editMapping_step(sgp)
+
         return Response()
 
     def apply_mapping_edits_to_sgp(self, sgp: SGP, edits):
@@ -469,6 +490,7 @@ class EditMappingsView(APIView):
         print("Found Mapping file: ", mapping_file.file_field.name)
         df = pd.read_csv(mapping_file.file_field.path)
 
+        # TODO: apply edit on all occurences here
         for key in edits:
             col = int(edits[key]['col'])
             row = int(edits[key]['row'])
@@ -512,6 +534,10 @@ class EditCpaView(APIView):
             mapping_copy[next_key] = [value['s'], "", value['p'], "", value['o'], ""]
 
         sgpc.cpaMappings = mapping_copy
+
+        for sgp in sgpc.associated_sgprojects.all():
+            append_editCpa_step(sgp)
+
         sgpc.save()
 
         return Response()
@@ -553,6 +579,10 @@ class EditSchemaView(APIView):
             print("Added: ", schemaCopy[next_key])
 
         sgpc.subclassMappings = schemaCopy
+
+        for sgp in sgpc.associated_sgprojects.all():
+            append_schemaRefine_step(sgp)
+
         sgpc.save()
 
         return Response()
@@ -605,8 +635,9 @@ class FetchMappingsView(APIView):
                 print(col_mappings[key])
                 for triple in CPAmapping.objects.filter(s=col_mappings[key]):
                     if triple.o in col_mappings.values():
-                        mappings_helper[key_counter] = [triple.s, triple.sLabel, triple.p,
-                                                        triple.pLabel, triple.o, triple.oLabel]
+                        new_entry = [triple.s, triple.sLabel, triple.p,
+                                     triple.pLabel, triple.o, triple.oLabel]
+                        mappings_helper[key_counter] = new_entry
                         key_counter += 1
 
         sgpc.cpaMappings = mappings_helper
@@ -621,15 +652,100 @@ class FetchMappingsView(APIView):
         return header
 
 
+class ResetCollectionView(APIView):
+    def post(self, request):
+        data = json.loads(request.body)["data"]
+        step = int(data['step'])
+        sgpc_pk = data['sgpc_pk']
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+        print("RESETVIEW, Step: ", step, " on sgpc: ", sgpc_pk)
+
+        clear_schema = False
+        clear_cpa = False
+
+        for sgp in sgpc.associated_sgprojects.all():
+            prov_rec = sgp.provenanceRecord
+            for i in range(len(sgp.provenanceRecord)-1, step-1, -1):
+                cur_type = prov_rec[str(i)]['type']
+                # print("i: ", i, " ", prov_rec[str(i)]['type'])
+                if cur_type == "linking":
+                    del prov_rec[str(i)]
+                    # TODO: Clear datasets
+                elif cur_type == "cleaning":
+                    del prov_rec[str(i)]
+                elif cur_type == "editcpa":
+                    clear_cpa = True
+                    del prov_rec[str(i)]
+                elif cur_type == "editmapping":
+                    del prov_rec[str(i)]
+                elif cur_type == "schemarefine":
+                    clear_schema = True
+                    del prov_rec[str(i)]
+                elif cur_type == "init":
+                    del prov_rec[str(i)]
+
+            sgp.save()
+
+        if clear_cpa:
+            self.clear_cpamappings(sgpc)
+
+        if clear_schema:
+            self.clear_schema(sgpc)
+
+        return JsonResponse({"phase": "linking"})
+
+    def clear_schema(self, sgpc: SGPC):
+        sgpc.subclassMappings = {}
+        sgpc.save()
+
+    def clear_cpamappings(self, sgpc: SGPC):
+        sgpc.cpaMappings = {}
+        sgpc.save()
+
+
+# this view is unnecessary for now
 class SGPInfoView(APIView):
     def get(self, request):
+        # tic = time.perf_counter()
         response = JsonResponse({"tabledata": get_all_sgp_info()})
+
+        # toc = time.perf_counter()
+        # print(f"get_all_sgp_info() took {toc - tic:0.4f} seconds")
         return response
 
 
 class SGPCInfoView(APIView):
     def get(self, request):
+        # tic = time.perf_counter()
+
         response = JsonResponse({"tabledata": get_all_sgpc_info()})
+
+        # toc = time.perf_counter()
+        # print(f"get_all_sgpc_info() took {toc - tic:0.4f} seconds")
+        return response
+
+
+class SingleSGPCInfoView(APIView):
+    def get(self, request):
+        sgpc_pk = request.GET.get('sgpc_pk', default=None)
+        response_content = {"tabledata": get_single_sgpc_info(sgpc_pk)}
+
+        response = JsonResponse(response_content)
+
+        return response
+
+
+class FetchProvrecView(APIView):
+    def get(self, request):
+        sgp_pk = request.GET.get('sgp_pk', default=None)
+
+        response_content = {"provrec": get_provrec(sgp_pk)}
+
+        response = JsonResponse(response_content)
+
         return response
 
 

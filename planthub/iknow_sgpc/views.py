@@ -1,6 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
 
+from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
     get_header_mapping,
     get_original_header,
@@ -72,15 +73,20 @@ def sgpc_from_key(key: str):
     return sgpc
 
 
+# TODO: reduce query amount here (very slow functions)
 def get_all_sgp_info():
     """
     Returns information about all sgp in the database,
     for the client to display and choose from.
     """
     info = [['Collectionname', 'Bioprojectname', 'Source dataset']]
-    for sgpc in SGPC.objects.all():
-        for sgp in sgpc.associated_sgprojects.all():
-            info.append([sgpc.collectionname, sgp.bioprojectname, sgp.source_dataset.all()[0].file_field.name])
+    # for sgpc in SGPC.objects.all():
+    #     for sgp in sgpc.associated_sgprojects.all():
+    #         info.append([sgpc.collectionname, sgp.bioprojectname, sgp.source_dataset.all()[0].file_field.name])
+    #         info.append([sgpc.collectionname, sgp.bioprojectname, sgp.original_filename])
+
+    for sgp in SGP.objects.all():
+        info.append([sgp.bioprojectname, sgp.bioprojectname, sgp.original_filename])
 
     return info
 
@@ -91,9 +97,28 @@ def get_all_sgpc_info():
     for the client to display and choose from.
     """
     info = [['Collectionname', 'Bioprojectname', '# associated graphs']]
-
+    # test = {0:5, 1:3, 4:5}
     for sgpc in SGPC.objects.all():
-        info.append([sgpc.collectionname, sgpc.bioprojectname, len(sgpc.associated_sgprojects.all())])
+        # len(sgpc.associated_sgprojects.all()) <-- this is extremely slow, (never use this if possible)
+        info.append([sgpc.collectionname, sgpc.bioprojectname, 30, sgpc.pk])
+        # info.append([0, 0, 0])
+        # info.append([0, 0, len(sgpc.associated_sgprojects.all())])  # 0.7-1.4 s
+        # info.append([0, sgpc.bioprojectname, 0])    # 0.02-0.1 s
+        # info.append([sgpc.collectionname, 0, 0])    # 0.02-0.1 s
+        # info.append([0, 0, len(test)])
+
+    return info
+
+
+def get_single_sgpc_info(sgpc_pk):
+    sgpc = sgpc_from_key(sgpc_pk)
+    if sgpc is False:
+        return False
+
+    info = [['Bioprojectname', 'Original Filename', "Sgp_pk"]]
+
+    for sgp in sgpc.associated_sgprojects.all():
+        info.append([sgp.bioprojectname, sgp.original_filename, sgp.pk])
 
     return info
 
@@ -136,3 +161,39 @@ def get_all_header_mappings(sgpc: SGPC):
             all_header_mappings.append([entry, header_mapping[i]])
 
     return all_header_mappings
+
+
+def get_history_sgpc(sgpc: SGPC):
+    sgp0 = sgpc.associated_sgprojects.all()[0]
+
+    helper = []
+    for key, phase in sgp0.provenanceRecord.items():
+        helper.append([key, phase['type']])
+
+    return helper
+
+
+def get_history_sgpc_renamed(sgpc: SGPC):
+    sgp0 = sgpc.associated_sgprojects.all()[0]
+
+    helper = []
+    for key, phase in sgp0.provenanceRecord.items():
+        name = ""
+        cur_type = phase['type']
+
+        if cur_type == 'linking':
+            name = "Cells Linking"
+        if cur_type == 'cleaning':
+            name = "Cleaning"
+        if cur_type == 'init':
+            name = "Column type selection"
+        if cur_type == 'editcpa':
+            name = "Property declaration"
+        if cur_type == 'editmapping':
+            name = "Cells Linking (after editing)"
+        if cur_type == 'schemarefine':
+            name = "Schema Refinement"
+
+        helper.append([key, name])
+
+    return helper

@@ -65,14 +65,38 @@ def append_linking_step(sgp: SGP, method, input_pk, output_pk):
     sgp.save()
 
 
-def append_cleaning_step(self, sgp: SGP, method, d_pk_in, d_pk_out):
-    cur_step = str(len(sgp.provenanceRecord))
-    sgp.provenanceRecord[cur_step] = {}
-    sgp.provenanceRecord[cur_step]["type"] = "cleaning"
-    sgp.provenanceRecord[cur_step]["actions"] = {}
-    sgp.provenanceRecord[cur_step]["actions"]["input"] = d_pk_in
-    sgp.provenanceRecord[cur_step]["actions"]["output"] = d_pk_out
-    sgp.provenanceRecord[cur_step]["actions"]["method"] = method
+def append_cleaning_step(sgp: SGP, method, d_pk_in, d_pk_out):
+    next_step = str(len(sgp.provenanceRecord))
+    sgp.provenanceRecord[next_step] = {}
+    sgp.provenanceRecord[next_step]["type"] = "cleaning"
+    sgp.provenanceRecord[next_step]["actions"] = {}
+    sgp.provenanceRecord[next_step]["actions"]["input"] = d_pk_in
+    sgp.provenanceRecord[next_step]["actions"]["output"] = d_pk_out
+    sgp.provenanceRecord[next_step]["actions"]["method"] = method
+
+    sgp.save()
+
+
+def append_editMapping_step(sgp: SGP):
+    next_step = str(len(sgp.provenanceRecord))
+    sgp.provenanceRecord[next_step] = {}
+    sgp.provenanceRecord[next_step]["type"] = "editmapping"
+
+    sgp.save()
+
+
+def append_editCpa_step(sgp: SGP):
+    next_step = str(len(sgp.provenanceRecord))
+    sgp.provenanceRecord[next_step] = {}
+    sgp.provenanceRecord[next_step]["type"] = "editcpa"
+
+    sgp.save()
+
+
+def append_schemaRefine_step(sgp: SGP):
+    next_step = str(len(sgp.provenanceRecord))
+    sgp.provenanceRecord[next_step] = {}
+    sgp.provenanceRecord[next_step]["type"] = "schemarefine"
 
     sgp.save()
 
@@ -205,3 +229,12 @@ def get_header_mapping(sgp: SGP):
 
 def get_original_header(sgp: SGP):
     return list(sgp.original_table_header.values())
+
+
+def get_provrec(sgp_pk):
+    sgp = sgp_from_key(sgp_pk)
+
+    if sgp is False:
+        return False
+
+    return sgp.provenanceRecord

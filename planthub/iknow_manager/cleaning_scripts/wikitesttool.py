@@ -182,6 +182,7 @@ def write_header_to_output(OUTPUT_FILE, header):
 
 
 def main(INPUT_FILE, OUTPUT_FILE, COL_TYPES, NUM_QUERY_ENTITIES=50):
+    # TODO: - check for internet connection
     # ENTRY POINT
     # read file into memory
     print(f"Reading file: {INPUT_FILE}")
