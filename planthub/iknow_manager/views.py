@@ -14,13 +14,16 @@ from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
 from planthub.iknow_manager.models import CPAmapping, safe_querymetadata
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
+    append_editCpa_step,
     append_editMapping_step,
     append_linking_step,
+    append_schemaRefine_step,
     apply_mapping_edits_to_sgp,
     create_sgp,
     get_column_types,
-    get_latest_dataset,
     get_latest_input_dataset,
+    get_latest_output_dataset,
+    get_mapping_dataset,
     get_provrec,
     replace_mapping_file_with_copy,
     replace_source_dataset,
@@ -41,6 +44,7 @@ from planthub.iknow_sgpc.views import (  # get_all_header_mappings,; get_history
     get_single_sgpc_info,
     is_in_progress_sgpc,
     sgpc_from_key,
+    undo_collection_till_phase,
 )
 
 from .cleaning_scripts import findsubclasses, wikitesttool
@@ -54,6 +58,7 @@ from .pdutil.pdreader import (  # get_json_from_csv,; get_list_from_csv,
 # from copyreg import constructor
 
 jr_error = JsonResponse({"msg": "error"})
+jr_error_message = {"msg": "error"}
 
 # everything about REQUEST HANDLING in django
 # https://docs.djangoproject.com/en/4.0/ref/request-response/
@@ -156,12 +161,14 @@ class FetchDataView(APIView):
         if req_type == "cleaning":
             data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history)
         if req_type == "linking":
+            print("preparing linking result")
             data = self.prepare_linking_result(sgpc, req_names, req_datasets, req_history)
         else:
             data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history)
 
         # print("returning prepared datasets: ", data)
         # print(type(data))
+
         response = JsonResponse(data, safe=False)
         # for key in data:
         #     print(f"Key: {key} value: {data[key]}")
@@ -195,10 +202,13 @@ class FetchDataView(APIView):
 
     def load_unique_mappings(self, sgp):
         input_dataset = get_latest_input_dataset(sgp)
-        result_df = get_latest_dataset(sgp)
+        mapping_dataset = get_mapping_dataset(sgp)
+
+        if input_dataset is False or mapping_dataset is False:
+            return jr_error_message
 
         input_df = pd.read_csv(input_dataset.file_field.path)
-        result_df = pd.read_csv(result_df.file_field.path)
+        mapping_dataset = pd.read_csv(mapping_dataset.file_field.path)
 
         col_types = get_column_types(sgp, binary=True)
 
@@ -206,7 +216,7 @@ class FetchDataView(APIView):
 
         for i, col_name in enumerate(input_df):
             if col_types[i]:
-                col_mappings = self.load_unique_col_mappings(input_df[col_name], result_df[col_name], col_name)
+                col_mappings = self.load_unique_col_mappings(input_df[col_name], mapping_dataset[col_name], col_name)
                 all_mappings[str(i)] = col_mappings
 
         return all_mappings
@@ -231,7 +241,7 @@ class FetchDataView(APIView):
 
         for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
             # print("sgp.id: ", sgp.id, " sgp.bioprojectname: ", sgp.bioprojectname)
-            dataset = get_latest_dataset(sgp)
+            dataset = get_latest_output_dataset(sgp)
             helper = {}
             helper["sgp_pk"] = sgp.pk
 
@@ -378,7 +388,7 @@ class LinkingView(APIView):
         Create a new output FileField and return everything.
         """
         sgp = sgp_from_key(key)
-        latest_dataset: Dataset = get_latest_dataset(sgp)
+        latest_dataset: Dataset = get_latest_output_dataset(sgp)
         output_file = create_filefield(
             self.suffix_filename_with_sgp(sgp, "output.csv"))
 
@@ -393,45 +403,12 @@ class LinkingView(APIView):
         return f"{sgp.pk}_{len(sgp.provenanceRecord)}_{filename}"
 
 
-# there is much redundant code here, also history data is missing
-class MappingView(APIView):
-    def post(self, request):
-        json_data = json.loads(request.body)["requestdata"]
-
-        # check if the desired key is there
-        if "sgpc_pk" not in json_data.keys():
-            return jr_error
-        sgpc_pk = json_data["sgpc_pk"]
-        sgpc = sgpc_from_key(sgpc_pk)
-
-        if sgpc is False:
-            return jr_error
-
-        for sgp in sgpc.associated_sgprojects.all():
-            self.find_mappings(sgp)
-
-        return Response()
-
-    def find_mappings(self, sgp: SGP):
-        mappings_helper = {}
-        col_mappings = sgp.provenanceRecord['0']['selection']['mapping']
-
-        key_counter = 0
-        for key in col_mappings:
-            print(col_mappings[key])
-            for triple in CPAmapping.objects.filter(s=col_mappings[key]):
-                if triple.o in col_mappings.values():
-                    mappings_helper[key_counter] = [triple.s, triple.sLabel, triple.p,
-                                                    triple.pLabel, triple.o, triple.oLabel]
-                    key_counter += 1
-                    print(mappings_helper)
-
-        sgp.cpaMappings = mappings_helper
-        sgp.save()
-
-
 class FetchSubclassesView(APIView):
     def get(self, request):
+        """
+        Returns subclass-mappings. If sgpc.subclassMappings is empty,
+        tries to generate them from the database.
+        """
         # get parameters from request
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
         sgpc = sgpc_from_key(sgpc_pk)
@@ -442,18 +419,7 @@ class FetchSubclassesView(APIView):
         all_subclasses = {'sgpc_pk': sgpc_pk}
 
         if (len(sgpc.subclassMappings) == 0):
-            print("FETCHING SUBCLASS MAPPINGS")
-            result = self.find_subclasses(sgpc)
-            counter = 0
-            subclasses_to_save = {}
-            for s in result:
-                for parent in result[s]['parentclasses']:
-                    helper = {'s': result[s]['label'], 'o': parent}
-                    subclasses_to_save[str(counter)] = helper
-                    counter += 1
-
-            sgpc.subclassMappings = subclasses_to_save
-            sgpc.save()
+            find_subclasses(sgpc)
 
         all_subclasses['mappings'] = sgpc.subclassMappings
         all_subclasses['history'] = get_history_sgpc_renamed(sgpc)
@@ -462,14 +428,52 @@ class FetchSubclassesView(APIView):
 
         return response
 
-    def find_subclasses(self, sgpc: SGPC):
-        headers = []
-        for sgp in sgpc.associated_sgprojects.all():
-            for entry in sgp.provenanceRecord['0']['selection']['mapping'].values():
-                headers.append(entry)
-        result = findsubclasses.main(headers, "")
 
-        return result
+class FetchCpaView(APIView):
+    def get(self, request):
+        """
+        Returns cpa-mappings. If sgpc.cpaMappings is empty,
+        tries to generate them from the database.
+        """
+        # get parameters from request
+        sgpc_pk = request.GET.get('sgpc_pk', default=None)
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        all_mappings = {'sgpc_pk': sgpc_pk}
+
+        if (len(sgpc.cpaMappings) == 0):
+            find_mappings(sgpc)
+
+        all_mappings["mappings"] = sgpc.cpaMappings
+        all_mappings["header"] = self.get_all_original_headers(sgpc)
+
+        response = JsonResponse(all_mappings)
+
+        return response
+
+    def header_json_to_list(self, json_header):
+        """
+        Helper method to reformat JSON entries from the database
+        into a list.
+        """
+        helper = []
+        for key in json_header:
+            helper.append(json_header[key])
+        return helper
+
+    def get_all_original_headers(self, sgpc: SGPC):
+        """
+        Gets all original headers from SGPs in a SGPC and
+        returns them as a list in a proper format.
+        """
+        header = []
+        for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+            header += self.header_json_to_list(sgp.original_table_header)
+
+        return header
 
 
 class EditMappingsView(APIView):
@@ -525,70 +529,6 @@ class EditSchemaView(APIView):
         edit_schema(sgpc, data)
 
         return Response()
-
-
-class FetchMappingsView(APIView):
-    def get(self, request):
-        # get parameters from request
-        sgpc_pk = request.GET.get('sgpc_pk', default=None)
-        sgpc = sgpc_from_key(sgpc_pk)
-
-        if sgpc is False:
-            return jr_error
-
-        all_mappings = {'sgpc_pk': sgpc_pk}
-
-        if (len(sgpc.cpaMappings) == 0):
-            self.find_mappings(sgpc)
-
-        # for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
-        #     if (len(sgp.cpaMappings) == 0):
-        #         self.find_mappings(sgp)
-
-        #     all_mappings[str(i)] = {}
-        #     all_mappings[str(i)]["sgp_pk"] = sgp.pk
-        #     all_mappings[str(i)]["mappings"] = sgp.cpaMappings
-        #     all_mappings[str(i)]["header"] = self.header_json_to_list(sgp.original_table_header)
-
-        all_mappings["mappings"] = sgpc.cpaMappings
-        all_mappings["header"] = self.collect_original_headers(sgpc)
-
-        response = JsonResponse(all_mappings)
-
-        return response
-
-    def header_json_to_list(self, json_header):
-        helper = []
-        for key in json_header:
-            helper.append(json_header[key])
-        return helper
-
-    def find_mappings(self, sgpc: SGPC):
-        mappings_helper = {}
-
-        for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
-            col_mappings = sgp.provenanceRecord['0']['selection']['mapping']
-
-            key_counter = 0
-            for key in col_mappings:
-                print(col_mappings[key])
-                for triple in CPAmapping.objects.filter(s=col_mappings[key]):
-                    if triple.o in col_mappings.values():
-                        new_entry = [triple.s, triple.sLabel, triple.p,
-                                     triple.pLabel, triple.o, triple.oLabel]
-                        mappings_helper[key_counter] = new_entry
-                        key_counter += 1
-
-        sgpc.cpaMappings = mappings_helper
-        sgpc.save()
-
-    def collect_original_headers(self, sgpc: SGPC):
-        header = []
-        for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
-            header += self.header_json_to_list(sgp.original_table_header)
-
-        print(header)
-        return header
 
 
 class ResetCollectionView(APIView):
@@ -718,6 +658,12 @@ class FetchBioprojectNamesView(APIView):
 
 class CopyCollectionView(APIView):
     def post(self, request):
+        """
+        Copies a SGPC with all its SGPs. If reset_to_phase is
+        given, it also clears all data until the given phase
+        number. This gives the client a copied collection to
+        work with.
+        """
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
         reset_to_phase = request.GET.get('reset', default=None)
 
@@ -726,7 +672,10 @@ class CopyCollectionView(APIView):
         if sgpc is False:
             return jr_error
 
-        copy_collection(sgpc, reset_to_phase)
+        sgpc_copy = copy_collection(sgpc)
+
+        if reset_to_phase is not None:
+            undo_collection_till_phase(sgpc_copy, int(reset_to_phase))
 
         return Response()
 
@@ -734,7 +683,10 @@ class CopyCollectionView(APIView):
 class RerunCollectionView(APIView):
     def post(self, request):
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
-        sgpc = sgpc_from_key(sgpc_pk)
+        sgpc: SGPC = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
 
         sgp_data = []
         sgp: SGP
@@ -744,14 +696,24 @@ class RerunCollectionView(APIView):
                 'provrec': sgp.provenanceRecord
             })
 
-        print("DATA: ", sgp_data)
+        # copy this by value
+        old_sgpc_provrec = dict(sgpc.collection_prov_rec)
+        rerun_subclasses = False
+        if (len(sgpc.subclassMappings) > 0):
+            rerun_subclasses = True
 
-        if sgpc is False:
-            return jr_error
+        rerun_cpa = False
+        if (len(sgpc.cpaMappings) > 0):
+            rerun_cpa = True
 
-        new_sgpc = copy_collection(sgpc, 1)
+        sgpc_copy = copy_collection(sgpc)
 
-        self.rerun_sgp(sgp_data, new_sgpc)
+        # undo collection up until init
+        undo_collection_till_phase(sgpc_copy, 1)
+
+        self.rerun_sgp(sgp_data, sgpc_copy)
+
+        self.rerun_sgpc(sgpc_copy, old_sgpc_provrec, rerun_subclasses, rerun_cpa)
 
         return Response()
 
@@ -769,7 +731,7 @@ class RerunCollectionView(APIView):
                     # do this later
                     pass
                 elif phase['type'] == 'linking':
-                    latest_dataset: Dataset = get_latest_dataset(new_sgp)
+                    latest_dataset: Dataset = get_latest_output_dataset(new_sgp)
                     print("LATEST_DATASET: ", latest_dataset)
                     output_file = create_filefield(
                         self.suffix_filename_with_sgp(new_sgp, "output.csv"))
@@ -777,6 +739,7 @@ class RerunCollectionView(APIView):
                     print("OUTPUT_FILE: ", output_file)
                     append_linking_step(new_sgp, -1, latest_dataset.pk, output_file.pk)
                     self.run_linking_tool(new_sgp, latest_dataset, output_file)
+
                 elif phase['type'] == 'editmapping':
                     if "edits" in phase:
                         apply_mapping_edits_to_sgp(new_sgp, phase['edits'])
@@ -784,15 +747,29 @@ class RerunCollectionView(APIView):
                     else:
                         append_editMapping_step(new_sgp, {})
                 elif phase['type'] == 'editcpa':
-                    if "edits" in phase:
-                        edit_cpa_mappings(new_sgpc, phase['edits'])
-                    else:
-                        edit_cpa_mappings(new_sgpc, {'deleted': {}, 'added': {}})
+                    append_editCpa_step(new_sgp)
                 elif phase['type'] == 'schemarefine':
-                    if "edits" in phase:
-                        edit_schema(new_sgpc, phase['edits'])
-                    else:
-                        edit_schema(new_sgpc, {'deleted': {}, 'added': {}})
+                    append_schemaRefine_step(new_sgp)
+
+    def rerun_sgpc(self, sgpc: SGPC, old_sgpc_provrec: dict, rerun_subclasses, rerun_cpa):
+        if rerun_subclasses:
+            # TODO: - DRY, move everything after method call into method find_subclasses
+            find_subclasses(sgpc)
+
+        if rerun_cpa:
+            find_mappings(sgpc)
+
+        for key, phase in old_sgpc_provrec.items():
+            if phase['type'] == 'editcpa':
+                if "edits" in phase:
+                    edit_cpa_mappings(sgpc, phase['edits'])
+                else:
+                    edit_cpa_mappings(sgpc, {'deleted': {}, 'added': {}})
+            elif phase['type'] == 'schemarefine':
+                if "edits" in phase:
+                    edit_schema(sgpc, phase['edits'])
+                else:
+                    edit_schema(sgpc, {'deleted': {}, 'added': {}})
 
     def run_linking_tool(self, sgp, latest_dataset, output_file):
         # assign necessary information
@@ -830,7 +807,8 @@ class ChangeDatasetAndRerunView(APIView):
         if sgpc is False:
             return jr_error
 
-        new_sgpc = copy_collection(sgpc, 1)
+        new_sgpc = copy_collection(sgpc)
+        undo_collection_till_phase(new_sgpc, 1)
 
         old_sgpc = SGPC.objects.get(pk=sgpc_pk)
 
@@ -881,7 +859,7 @@ class ChangeDatasetAndRerunView(APIView):
                     # do this later
                     pass
                 elif phase['type'] == 'linking':
-                    latest_dataset: Dataset = get_latest_dataset(new_sgp)
+                    latest_dataset: Dataset = get_latest_output_dataset(new_sgp)
                     output_file = create_filefield(
                         self.suffix_filename_with_sgp(new_sgp, "output.csv"))
                     append_linking_step(new_sgp, -1, latest_dataset.pk, output_file.pk)
@@ -918,15 +896,71 @@ class ChangeDatasetAndRerunView(APIView):
 class DeleteDBView(APIView):
     def post(self, request):
         for d in Dataset.objects.all():
-            d.delete()
+            if d.pk > 647:
+                d.delete()
 
         for sgp in SGP.objects.all():
-            sgp.delete()
+            if sgp.pk > 507:
+                sgp.delete()
 
         for sgpc in SGPC.objects.all():
-            sgpc.delete()
+            print(sgpc.pk)
+            if sgpc.pk > 308:
+                sgpc.delete()
 
         return Response()
+
+
+def find_subclasses(sgpc: SGPC):
+    """
+    Generates subclass-mappings based on data in the collection and
+    fetched results from the wikidata endpoint.
+    """
+    headers = []
+    for sgp in sgpc.associated_sgprojects.all():
+        for entry in sgp.provenanceRecord['0']['selection']['mapping'].values():
+            headers.append(entry)
+    result = findsubclasses.main(headers, "")
+
+    counter = 0
+    subclasses_to_save = {}
+    for s in result:
+        for parent in result[s]['parentclasses']:
+            helper = {'s': result[s]['label'], 'o': parent}
+            subclasses_to_save[str(counter)] = helper
+            counter += 1
+
+    sgpc.subclassMappings = subclasses_to_save
+    sgpc.save()
+
+
+def find_mappings(sgpc: SGPC):
+    """
+    Generates cpa-mappings based on data in the collection and
+    the manually inserted CPAmapping database entries.
+    """
+    mappings_helper = {}
+
+    sgp: SGP
+    for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+        try:
+            col_mappings = sgp.provenanceRecord['0']['selection']['mapping']
+        except KeyError:
+            print("Could not load init-selection-mappings from sgp: ", sgp.pk)
+            # TODO: - handle error
+            continue
+
+        key_counter = 0
+        for key in col_mappings:
+            for triple in CPAmapping.objects.filter(s=col_mappings[key]):
+                if triple.o in col_mappings.values():
+                    new_entry = [triple.s, triple.sLabel, triple.p,
+                                 triple.pLabel, triple.o, triple.oLabel]
+                    mappings_helper[key_counter] = new_entry
+                    key_counter += 1
+
+    sgpc.cpaMappings = mappings_helper
+    sgpc.save()
 
 
 def get_next_unused_key(somedic: dict):

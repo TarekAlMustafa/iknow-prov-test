@@ -14,7 +14,14 @@ def send_query(query: str):
     while (not fin):
         print("Sending request... Querylength: ", len(query))
         st = time.time()
-        r = requests.post(URL, params={'format': 'json', 'query': query})
+
+        try:
+            r = requests.post(URL, params={'format': 'json', 'query': query})
+        except requests.exceptions.RequestException as e:
+            # TODO: - handle error(s)
+            print("Error during request: ", e)
+            fin = True
+
         if str(r) != "<Response [429]>":
             try:
                 data = r.json()

@@ -12,12 +12,11 @@ from .views import (
     EditSchemaView,
     FetchBioprojectNamesView,
     FetchCollectionProvenance,
+    FetchCpaView,
     FetchDataView,
-    FetchMappingsView,
     FetchProvrecView,
     FetchSubclassesView,
     LinkingView,
-    MappingView,
     RerunCollectionView,
     ResetCollectionView,
     SGPCInfoView,
@@ -79,9 +78,7 @@ urlpatterns = [
     # -------------------------------------------------#
     path('fetch-provrec', FetchProvrecView.as_view()),
 
-    path('findMappings', MappingView.as_view()),
-
-    path('fetchMappings', FetchMappingsView.as_view()),
+    path('fetch-cpa', FetchCpaView.as_view()),
 
     path('fetchSubclasses', FetchSubclassesView.as_view()),
 

@@ -204,21 +204,29 @@ def get_history_sgpc_renamed(sgpc: SGPC):
 
 
 def undo_collection_till_phase(sgpc: SGPC, phase_number: int):
-    clear_schema = False
-    clear_cpa = False
+    """
+    Clears provenance Record of SGPC and all its SGPs until
+    given phase_number.
+    """
 
     for sgp in sgpc.associated_sgprojects.all():
         prov_rec = sgp.provenanceRecord
         for i in range(len(sgp.provenanceRecord)-1, phase_number-1, -1):
-            cur_type = prov_rec[str(i)]['type']
-            # print("i: ", i, " ", prov_rec[str(i)]['type'])
+            try:
+                cur_type = prov_rec[str(i)]['type']
+            except KeyError:
+                # TODO: - handle error (if this happens, provrec is broken)
+                continue
+
+            # handling for each phase type
             if cur_type == "linking":
                 del prov_rec[str(i)]
                 # TODO: Clear datasets
+
             elif cur_type == "cleaning":
                 del prov_rec[str(i)]
+
             elif cur_type == "editcpa":
-                clear_cpa = True
                 del prov_rec[str(i)]
 
                 for key, phase in sgpc.collection_prov_rec.items():
@@ -229,8 +237,8 @@ def undo_collection_till_phase(sgpc: SGPC, phase_number: int):
                 sgpc.cpaMappings = {}
             elif cur_type == "editmapping":
                 del prov_rec[str(i)]
+
             elif cur_type == "schemarefine":
-                clear_schema = True
                 del prov_rec[str(i)]
                 for key, phase in sgpc.collection_prov_rec.items():
                     if phase['type'] == "schemarefine":
@@ -238,46 +246,66 @@ def undo_collection_till_phase(sgpc: SGPC, phase_number: int):
                         break
 
                 sgpc.subclassMappings = {}
+
             elif cur_type == "init":
                 del prov_rec[str(i)]
 
         sgp.save()
 
-    if clear_cpa:
-        sgpc.cpaMappings = {}
-
-    if clear_schema:
-        sgpc.subclassMappings = {}
-
     sgpc.save()
 
 
-def copy_collection(sgpc: SGPC, reset_to_phase):
+def copy_collection(sgpc: SGPC):
+    """
+    Copies a collection (and copies all its SGPs),
+    replaces the mapping file and returns
+    the newly created copied SGPC object.
+    """
     copied_sgps = []
 
     sgp: SGP
     for sgp in sgpc.associated_sgprojects.all():
-        dataset = sgp.source_dataset.all()[0]
+        # get source dataset of sgp
+        try:
+            dataset = sgp.source_dataset.all()[0]
+        except IndexError:
+            # TODO: - handle error
+            continue
+
+        # copy sgp
         sgp.pk = None
         # sgp.id = None
         sgp.project_copied = True
         sgp.datasets_copied = True
+
         sgp.save()
+
+        # add original source dataset to sgp_copy
         sgp.source_dataset.add(dataset)
-        replace_mapping_file_with_copy(sgp)
+
+        try:
+            replace_mapping_file_with_copy(sgp)
+        except ValueError:
+            # TODO: - handle error
+            continue
+
         copied_sgps.append(sgp)
 
+    # copy sgpc
     sgpc.pk = None
     sgpc.save()
+
+    # clear and add copied sgps to sgpc_copy
     sgpc.associated_sgprojects.clear()
 
     for new_sgp in copied_sgps:
-        sgpc.associated_sgprojects.add(new_sgp)
+        try:
+            sgpc.associated_sgprojects.add(new_sgp)
+        except ValueError:
+            # TODO: - handle error
+            continue
 
     sgpc.save()
-
-    if reset_to_phase is not None:
-        undo_collection_till_phase(sgpc, int(reset_to_phase))
 
     return sgpc
 
@@ -293,7 +321,6 @@ def sgpc_append_editCpa_step(sgpc: SGPC, deletions: dict, additions: dict):
 
 
 def sgpc_append_schemaRefine_step(sgpc: SGPC, deletions: dict, additions: dict):
-    print("SSSSSSSSSSSSs")
     next_step = str(len(sgpc.collection_prov_rec))
     sgpc.collection_prov_rec[next_step] = {}
     sgpc.collection_prov_rec[next_step]["type"] = "schemarefine"
