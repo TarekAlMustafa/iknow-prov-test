@@ -1,5 +1,6 @@
 # from django.shortcuts import render
 
+import pandas as pd
 from django.core.exceptions import ObjectDoesNotExist
 
 from planthub.iknow_datasets.models import Dataset
@@ -77,10 +78,11 @@ def append_cleaning_step(sgp: SGP, method, d_pk_in, d_pk_out):
     sgp.save()
 
 
-def append_editMapping_step(sgp: SGP):
+def append_editMapping_step(sgp: SGP, edits: dict):
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "editmapping"
+    sgp.provenanceRecord[next_step]["edits"] = edits
 
     sgp.save()
 
@@ -238,3 +240,56 @@ def get_provrec(sgp_pk):
         return False
 
     return sgp.provenanceRecord
+
+
+def replace_mapping_file_with_copy(sgp: SGP):
+    for key, phase in sgp.provenanceRecord.items():
+        if phase['type'] == 'linking':
+            output_pk = phase['actions']['output']
+            old_dataset = Dataset.objects.get(pk=output_pk)
+
+            old_dataset.pk = None
+            old_dataset.save()
+            phase['actions']['output'] = old_dataset.pk
+
+            sgp.save()
+
+
+def apply_mapping_edits_to_sgp(sgp: SGP, edits):
+    # print("Applying edits: ")
+    # print(edits)
+    # print("to sgp ", sgp.pk)
+    mapping_file = get_mapping_file(sgp)
+    print("Found Mapping file: ", mapping_file.file_field.name)
+    df = pd.read_csv(mapping_file.file_field.path)
+
+    # TODO: apply edit on all occurences here
+    for key in edits:
+        col = int(edits[key]['col'])
+        row = int(edits[key]['row'])
+        print(f"col: {col} row: {row} original_val: {df.iat[row, col]}")
+        df.iat[row, col] = str(edits[key]['value'])
+
+    df.to_csv(mapping_file.file_field.path, index=False)
+
+
+def replace_source_dataset(sgp: SGP, new_dataset: Dataset):
+    sgp.source_dataset.clear()
+    sgp.source_dataset.add(new_dataset)
+    sgp.datasets_copied = False
+    sgp.save()
+
+
+def reset_sgp_until_linking(sgp: SGP):
+    prov_rec = sgp.provenanceRecord
+    for i in range(len(sgp.provenanceRecord)-1, 0, -1):
+        cur_type = prov_rec[str(i)]['type']
+
+        if cur_type == "editcpa":
+            del prov_rec[str(i)]
+        elif cur_type == "editmapping":
+            del prov_rec[str(i)]
+        elif cur_type == "schemarefine":
+            del prov_rec[str(i)]
+
+    sgp.save()

@@ -3,9 +3,12 @@ from django.http import JsonResponse
 
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
+    append_editCpa_step,
+    append_schemaRefine_step,
     get_header_mapping,
     get_original_header,
     is_in_progress,
+    replace_mapping_file_with_copy,
 )
 
 from .models import SGPC, BioProject
@@ -98,9 +101,10 @@ def get_all_sgpc_info():
     """
     info = [['Collectionname', 'Bioprojectname', '# associated graphs']]
     # test = {0:5, 1:3, 4:5}
+    sgpc: SGPC
     for sgpc in SGPC.objects.all():
         # len(sgpc.associated_sgprojects.all()) <-- this is extremely slow, (never use this if possible)
-        info.append([sgpc.collectionname, sgpc.bioprojectname, 30, sgpc.pk])
+        info.append([sgpc.collectionname, sgpc.bioprojectname, sgpc.associated_sgprojects.all().count(), sgpc.pk])
         # info.append([0, 0, 0])
         # info.append([0, 0, len(sgpc.associated_sgprojects.all())])  # 0.7-1.4 s
         # info.append([0, sgpc.bioprojectname, 0])    # 0.02-0.1 s
@@ -197,3 +201,178 @@ def get_history_sgpc_renamed(sgpc: SGPC):
         helper.append([key, name])
 
     return helper
+
+
+def undo_collection_till_phase(sgpc: SGPC, phase_number: int):
+    clear_schema = False
+    clear_cpa = False
+
+    for sgp in sgpc.associated_sgprojects.all():
+        prov_rec = sgp.provenanceRecord
+        for i in range(len(sgp.provenanceRecord)-1, phase_number-1, -1):
+            cur_type = prov_rec[str(i)]['type']
+            # print("i: ", i, " ", prov_rec[str(i)]['type'])
+            if cur_type == "linking":
+                del prov_rec[str(i)]
+                # TODO: Clear datasets
+            elif cur_type == "cleaning":
+                del prov_rec[str(i)]
+            elif cur_type == "editcpa":
+                clear_cpa = True
+                del prov_rec[str(i)]
+
+                for key, phase in sgpc.collection_prov_rec.items():
+                    if phase['type'] == "editcpa":
+                        del sgpc.collection_prov_rec[key]
+                        break
+
+                sgpc.cpaMappings = {}
+            elif cur_type == "editmapping":
+                del prov_rec[str(i)]
+            elif cur_type == "schemarefine":
+                clear_schema = True
+                del prov_rec[str(i)]
+                for key, phase in sgpc.collection_prov_rec.items():
+                    if phase['type'] == "schemarefine":
+                        del sgpc.collection_prov_rec[key]
+                        break
+
+                sgpc.subclassMappings = {}
+            elif cur_type == "init":
+                del prov_rec[str(i)]
+
+        sgp.save()
+
+    if clear_cpa:
+        sgpc.cpaMappings = {}
+
+    if clear_schema:
+        sgpc.subclassMappings = {}
+
+    sgpc.save()
+
+
+def copy_collection(sgpc: SGPC, reset_to_phase):
+    copied_sgps = []
+
+    sgp: SGP
+    for sgp in sgpc.associated_sgprojects.all():
+        dataset = sgp.source_dataset.all()[0]
+        sgp.pk = None
+        # sgp.id = None
+        sgp.project_copied = True
+        sgp.datasets_copied = True
+        sgp.save()
+        sgp.source_dataset.add(dataset)
+        replace_mapping_file_with_copy(sgp)
+        copied_sgps.append(sgp)
+
+    sgpc.pk = None
+    sgpc.save()
+    sgpc.associated_sgprojects.clear()
+
+    for new_sgp in copied_sgps:
+        sgpc.associated_sgprojects.add(new_sgp)
+
+    sgpc.save()
+
+    if reset_to_phase is not None:
+        undo_collection_till_phase(sgpc, int(reset_to_phase))
+
+    return sgpc
+
+
+def sgpc_append_editCpa_step(sgpc: SGPC, deletions: dict, additions: dict):
+    next_step = str(len(sgpc.collection_prov_rec))
+    sgpc.collection_prov_rec[next_step] = {}
+    sgpc.collection_prov_rec[next_step]["type"] = "editcpa"
+    sgpc.collection_prov_rec[next_step]["deletions"] = deletions
+    sgpc.collection_prov_rec[next_step]["additions"] = additions
+
+    sgpc.save()
+
+
+def sgpc_append_schemaRefine_step(sgpc: SGPC, deletions: dict, additions: dict):
+    print("SSSSSSSSSSSSs")
+    next_step = str(len(sgpc.collection_prov_rec))
+    sgpc.collection_prov_rec[next_step] = {}
+    sgpc.collection_prov_rec[next_step]["type"] = "schemarefine"
+    sgpc.collection_prov_rec[next_step]["deletions"] = deletions
+    sgpc.collection_prov_rec[next_step]["additions"] = additions
+
+    sgpc.save()
+
+
+def edit_cpa_mappings(sgpc: SGPC, edits: dict):
+    mapping_copy = sgpc.cpaMappings
+    # header_mappings = get_all_header_mappings(sgpc)
+
+    for deletion in edits['deleted']:
+        for key in mapping_copy:
+            if (deletion['s'] == mapping_copy[key][0] and
+                deletion['p'] == mapping_copy[key][2] and
+                    deletion['o'] == mapping_copy[key][4]):
+                # print("deleting ", mapping_copy[key])
+                del mapping_copy[key]
+                break
+
+    for key, value in edits['added'].items():
+        next_key = get_next_unused_key(mapping_copy)
+        print("NEXT KEY", next_key, " TYPE: ", type(next_key))
+        # print("TYPEADD: ", type(addition))
+        # print("ADD: ", addition)
+        print("TYPEMAP: ", type(mapping_copy))
+
+        mapping_copy[next_key] = [value['s'], "", value['p'], "", value['o'], ""]
+
+    sgpc.cpaMappings = mapping_copy
+    sgpc_append_editCpa_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
+
+    for sgp in sgpc.associated_sgprojects.all():
+        append_editCpa_step(sgp)
+
+    sgpc.save()
+
+
+def edit_schema(sgpc: SGPC, edits: dict):
+    schemaCopy = sgpc.subclassMappings
+    # print(mapping_copy)
+
+    for deletion in edits['deleted']:
+        for key, valueDic in schemaCopy.items():
+            if (deletion['s'] == valueDic['s'] and
+                    deletion['o'] == valueDic['o']):
+                print("Deleted: ", schemaCopy[key])
+                del schemaCopy[key]
+                break
+
+    for key, value in edits['added'].items():
+        next_key = get_next_unused_key(schemaCopy)
+        # print("NEXT KEY", next_key, " TYPE: ", type(next_key))
+        # print("TYPEADD: ", type(addition))
+        # print("ADD: ", addition)
+
+        schemaCopy[next_key] = {}
+        schemaCopy[next_key]['s'] = value['s']
+        schemaCopy[next_key]['o'] = value['o']
+
+        print("Added: ", schemaCopy[next_key])
+
+    sgpc.subclassMappings = schemaCopy
+    sgpc_append_schemaRefine_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
+
+    for sgp in sgpc.associated_sgprojects.all():
+        append_schemaRefine_step(sgp)
+
+    sgpc.save()
+
+
+# DOUBLE fix this later
+def get_next_unused_key(somedic: dict):
+    for i in range(10000):
+        if str(i) in somedic:
+            i += 1
+        else:
+            return str(i)
+
+    return False

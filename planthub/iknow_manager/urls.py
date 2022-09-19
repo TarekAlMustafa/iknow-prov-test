@@ -1,19 +1,24 @@
 from django.urls import path
 
 from .views import (
+    ChangeDatasetAndRerunView,
     CleaningView,
+    CopyCollectionView,
     CreateCollectionView,
     DatasetInit,
+    DeleteDBView,
     EditCpaView,
     EditMappingsView,
     EditSchemaView,
+    FetchBioprojectNamesView,
+    FetchCollectionProvenance,
     FetchDataView,
     FetchMappingsView,
     FetchProvrecView,
     FetchSubclassesView,
     LinkingView,
     MappingView,
-    ProjectNamesView,
+    RerunCollectionView,
     ResetCollectionView,
     SGPCInfoView,
     SGPInfoView,
@@ -56,18 +61,22 @@ urlpatterns = [
     # at the moment [unique, parameterized]
     path('apply_linking', LinkingView.as_view()),
 
+    path('fetch-bioproject-names', FetchBioprojectNamesView.as_view()),
+
     path('all-sgp-info', SGPInfoView.as_view()),
 
     path('all-sgpc-info', SGPCInfoView.as_view()),
 
     path('single-sgpc-info', SingleSGPCInfoView.as_view()),
 
-    path('getProjectsName', ProjectNamesView.as_view()),
     # returns dataset data etc. for specific sgproject
     # this might be a good one to merge into
     # [multiple, parameterized]
     # path('datasets_data', DatasetDataView.as_view()),
 
+
+
+    # -------------------------------------------------#
     path('fetch-provrec', FetchProvrecView.as_view()),
 
     path('findMappings', MappingView.as_view()),
@@ -84,4 +93,14 @@ urlpatterns = [
 
     path('resetcollectionto', ResetCollectionView.as_view()),
     # path('history', ProjectHistoryView.as_view()),
+
+    path('delete-database', DeleteDBView.as_view()),
+
+    path('copy-collection', CopyCollectionView.as_view()),
+
+    path('fetch-collection-provenance', FetchCollectionProvenance.as_view()),
+
+    path('rerun-collection', RerunCollectionView.as_view()),
+
+    path('change-datasets-and-rerun', ChangeDatasetAndRerunView.as_view()),
 ]

@@ -31,5 +31,11 @@ class SGP(models.Model):
 
     original_filename = models.CharField(max_length=4096, default="")
 
+    project_copied = models.BooleanField(default=False)
+
+    datasets_copied = models.BooleanField(default=False)
+
+    id_in_collection = models.IntegerField(default=0)
+
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)

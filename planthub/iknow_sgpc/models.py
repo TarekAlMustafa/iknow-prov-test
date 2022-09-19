@@ -47,6 +47,8 @@ class SGPC(models.Model):
     cpaMappings = models.JSONField(default=dict)
 
     subclassMappings = models.JSONField(default=dict)
+
+    collection_prov_rec = models.JSONField(default=dict)
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)
 
