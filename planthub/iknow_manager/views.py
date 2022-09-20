@@ -451,6 +451,7 @@ class FetchCpaView(APIView):
 
         all_mappings["mappings"] = sgpc.cpaMappings
         all_mappings["header"] = self.get_all_original_headers(sgpc)
+        all_mappings["history"] = get_history_sgpc_renamed(sgpc)
 
         response = JsonResponse(all_mappings)
 
@@ -544,47 +545,9 @@ class ResetCollectionView(APIView):
             return jr_error
         print("RESETVIEW, Step: ", step, " on sgpc: ", sgpc_pk)
 
-        clear_schema = False
-        clear_cpa = False
-
-        for sgp in sgpc.associated_sgprojects.all():
-            prov_rec = sgp.provenanceRecord
-            for i in range(len(sgp.provenanceRecord)-1, step-1, -1):
-                cur_type = prov_rec[str(i)]['type']
-                # print("i: ", i, " ", prov_rec[str(i)]['type'])
-                if cur_type == "linking":
-                    del prov_rec[str(i)]
-                    # TODO: Clear datasets
-                elif cur_type == "cleaning":
-                    del prov_rec[str(i)]
-                elif cur_type == "editcpa":
-                    clear_cpa = True
-                    del prov_rec[str(i)]
-                elif cur_type == "editmapping":
-                    del prov_rec[str(i)]
-                elif cur_type == "schemarefine":
-                    clear_schema = True
-                    del prov_rec[str(i)]
-                elif cur_type == "init":
-                    del prov_rec[str(i)]
-
-            sgp.save()
-
-        if clear_cpa:
-            self.clear_cpamappings(sgpc)
-
-        if clear_schema:
-            self.clear_schema(sgpc)
+        undo_collection_till_phase(sgpc, step)
 
         return JsonResponse({"phase": "linking"})
-
-    def clear_schema(self, sgpc: SGPC):
-        sgpc.subclassMappings = {}
-        sgpc.save()
-
-    def clear_cpamappings(self, sgpc: SGPC):
-        sgpc.cpaMappings = {}
-        sgpc.save()
 
 
 # this view is unnecessary for now
