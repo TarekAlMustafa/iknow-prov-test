@@ -49,7 +49,7 @@ def set_phase_state(sgp: SGP, new_state: str):
     sgp.save()
 
 
-def append_linking_step(sgp: SGP, method, input_pk, output_pk):
+def append_linking_step(sgp: SGP, input_pk, output_pk, method: str = "iknow-method"):
     """
     On start of linking tool, appends information
     in the provenance record.
@@ -78,27 +78,33 @@ def append_cleaning_step(sgp: SGP, method, d_pk_in, d_pk_out):
     sgp.save()
 
 
-def append_editMapping_step(sgp: SGP, edits: dict):
+def append_editMapping_step(sgp: SGP, edits: dict, method: str = "iknow-method"):
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "editmapping"
     sgp.provenanceRecord[next_step]["edits"] = edits
+    sgp.provenanceRecord[next_step]["actions"] = {}
+    sgp.provenanceRecord[next_step]["actions"]["method"] = method
 
     sgp.save()
 
 
-def append_editCpa_step(sgp: SGP):
+def append_editCpa_step(sgp: SGP, method: str = "iknow-method"):
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "editcpa"
+    sgp.provenanceRecord[next_step]["actions"] = {}
+    sgp.provenanceRecord[next_step]["actions"]["method"] = method
 
     sgp.save()
 
 
-def append_schemaRefine_step(sgp: SGP):
+def append_schemaRefine_step(sgp: SGP, method: str = "iknow-method"):
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "schemarefine"
+    sgp.provenanceRecord[next_step]["actions"] = {}
+    sgp.provenanceRecord[next_step]["actions"]["method"] = method
 
     sgp.save()
 

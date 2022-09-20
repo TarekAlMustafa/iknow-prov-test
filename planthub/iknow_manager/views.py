@@ -288,10 +288,12 @@ class DatasetInit(APIView):
 
         return response
 
-    def safe_init_step(self, sgp: SGP, data):
+    def safe_init_step(self, sgp: SGP, data, method: str = "iknow-method"):
         sgp.provenanceRecord[0] = {}
         sgp.provenanceRecord[0]["type"] = "init"
         sgp.provenanceRecord[0]["selection"] = data["selection"]
+        sgp.provenanceRecord[0]["actions"] = {}
+        sgp.provenanceRecord[0]["actions"]["method"] = method
 
         sgp.save()
 
@@ -374,7 +376,7 @@ class LinkingView(APIView):
                 return jr_error
 
             # write to provenance record
-            append_linking_step(sgp, method, latest_dataset.pk, output_file.pk)
+            append_linking_step(sgp, latest_dataset.pk, output_file.pk, "Direct API")
 
         # assign jobs to response to handle
         # tool execution after returning the response to the client
@@ -737,7 +739,7 @@ class RerunCollectionView(APIView):
                         self.suffix_filename_with_sgp(new_sgp, "output.csv"))
 
                     print("OUTPUT_FILE: ", output_file)
-                    append_linking_step(new_sgp, -1, latest_dataset.pk, output_file.pk)
+                    append_linking_step(new_sgp, latest_dataset.pk, output_file.pk, "Direct API")
                     self.run_linking_tool(new_sgp, latest_dataset, output_file)
 
                 elif phase['type'] == 'editmapping':
@@ -862,7 +864,7 @@ class ChangeDatasetAndRerunView(APIView):
                     latest_dataset: Dataset = get_latest_output_dataset(new_sgp)
                     output_file = create_filefield(
                         self.suffix_filename_with_sgp(new_sgp, "output.csv"))
-                    append_linking_step(new_sgp, -1, latest_dataset.pk, output_file.pk)
+                    append_linking_step(new_sgp, latest_dataset.pk, output_file.pk, "Direct API")
                     self.run_linking_tool(new_sgp, latest_dataset, output_file)
 
     def run_linking_tool(self, sgp, latest_dataset, output_file):
@@ -896,16 +898,16 @@ class ChangeDatasetAndRerunView(APIView):
 class DeleteDBView(APIView):
     def post(self, request):
         for d in Dataset.objects.all():
-            if d.pk > 647:
+            if d.pk > 760:
                 d.delete()
 
         for sgp in SGP.objects.all():
-            if sgp.pk > 507:
+            if sgp.pk > 573:
                 sgp.delete()
 
         for sgpc in SGPC.objects.all():
             print(sgpc.pk)
-            if sgpc.pk > 308:
+            if sgpc.pk > 343:
                 sgpc.delete()
 
         return Response()
