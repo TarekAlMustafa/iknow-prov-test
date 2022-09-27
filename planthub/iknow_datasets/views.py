@@ -51,7 +51,8 @@ def handle_uploaded_file(file, filename):
 
 def create_filefield(filename: str):
     """
-    Creates dataset entry by creating new empty file.
+    Creates dataset entry by creating new empty file. We create a new
+    empty file to use it in in linkingresult.
     """
     unique_filename = f"{uuid.uuid4().hex}_{filename}"
     filepath = Path(f"{STORAGE_DIR}{unique_filename}")
@@ -80,7 +81,7 @@ def create_filefield(filename: str):
 
 def dataset_from_key(key: str):
     """
-    Returns a safely obtained instance of SGP
+    Returns a safely obtained instance of Dataset
     from a given key.
     """
     if key is None:

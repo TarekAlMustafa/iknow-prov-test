@@ -1,3 +1,5 @@
+# THis file is saving information about a SGPC.
+
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
 
@@ -76,24 +78,6 @@ def sgpc_from_key(key: str):
     return sgpc
 
 
-# TODO: reduce query amount here (very slow functions)
-def get_all_sgp_info():
-    """
-    Returns information about all sgp in the database,
-    for the client to display and choose from.
-    """
-    info = [['Collectionname', 'Bioprojectname', 'Source dataset']]
-    # for sgpc in SGPC.objects.all():
-    #     for sgp in sgpc.associated_sgprojects.all():
-    #         info.append([sgpc.collectionname, sgp.bioprojectname, sgp.source_dataset.all()[0].file_field.name])
-    #         info.append([sgpc.collectionname, sgp.bioprojectname, sgp.original_filename])
-
-    for sgp in SGP.objects.all():
-        info.append([sgp.bioprojectname, sgp.bioprojectname, sgp.original_filename])
-
-    return info
-
-
 def get_all_sgpc_info():
     """
     Returns information about all sgpc in the database,
@@ -110,19 +94,6 @@ def get_all_sgpc_info():
         # info.append([0, sgpc.bioprojectname, 0])    # 0.02-0.1 s
         # info.append([sgpc.collectionname, 0, 0])    # 0.02-0.1 s
         # info.append([0, 0, len(test)])
-
-    return info
-
-
-def get_single_sgpc_info(sgpc_pk):
-    sgpc = sgpc_from_key(sgpc_pk)
-    if sgpc is False:
-        return False
-
-    info = [['Bioprojectname', 'Original Filename', "Sgp_pk"]]
-
-    for sgp in sgpc.associated_sgprojects.all():
-        info.append([sgp.bioprojectname, sgp.original_filename, sgp.pk])
 
     return info
 

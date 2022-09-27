@@ -25,6 +25,7 @@ class SGP(models.Model):
     # TODO: - mark layout as comment here
     provenanceRecord = models.JSONField(default=dict)
 
+    # TODO: - delete field
     cpaMappings = models.JSONField(default=dict)
 
     original_table_header = models.JSONField(default=dict)

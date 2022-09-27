@@ -9,13 +9,6 @@ from planthub.iknow_sgp.models import SGP
 # https://riptutorial.com/django/example/30649/foreignkey
 # https://stackoverflow.com/questions/34305805/foreignkey-user-in-models
 
-# TODO: make own field and give client the possibility to create new bioprojectname
-BIOPROJECTNAME_CHOICES = [
-    ('PhenObs', 'Phenobs'),
-    ('Glonaf', 'Glonaf'),
-    ('sPlot', 'sPlot')
-]
-
 
 class BioProject(models.Model):
     name = models.CharField(max_length=1023, unique=True, default='', blank=True, null=True)

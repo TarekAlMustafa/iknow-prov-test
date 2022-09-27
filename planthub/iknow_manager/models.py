@@ -21,6 +21,13 @@ class IKNOWclass(models.Model):
     label = models.CharField(max_length=4096)
 
 
+class HeaderClass(models.Model):
+    main_category_label = models.CharField(max_length=4096)
+    main_category_uri = models.CharField(max_length=4096)
+    sub_category_label = models.CharField(max_length=4096)
+    sub_category_uri = models.CharField(unique=True, max_length=4096)
+
+
 class QueryMetaData(models.Model):
     project_name = models.CharField(max_length=4096)
     column_name = models.CharField(max_length=4096)
@@ -33,6 +40,9 @@ class QueryMetaData(models.Model):
 
 
 def safe_querymetadata(data: dict, original_header: dict, proj_name: str):
+    """
+    Creates a new entry of QueryMetaData for each column.
+    """
     print("proj_name: ", proj_name)
     for key, col in original_header.items():
         print("header: ", original_header[key])
@@ -50,3 +60,34 @@ def safe_querymetadata(data: dict, original_header: dict, proj_name: str):
         querymetadata.column_URI = data["mapping"][key]
 
         querymetadata.save()
+
+
+def get_all_headerclasses():
+    all_classes = {}
+    c: HeaderClass
+    for c in HeaderClass.objects.all():
+        if c.main_category_label not in all_classes:
+            all_classes[c.main_category_label] = []
+        all_classes[c.main_category_label].append({
+            'label': c.sub_category_label,
+            'uri': c.sub_category_uri
+        })
+
+    return all_classes
+
+
+def create_new_headerclass(data):
+    # TODO: - validate form before saving new categories
+    print("create_new_headerclass")
+    print(data)
+    if HeaderClass.objects.filter(sub_category_uri=data["newsuburi"]):
+        return False
+
+    header_class = HeaderClass()
+    header_class.main_category_label = data["newmainlabel"]
+    if "main_category_uri" in data:
+        header_class.main_category_uri = data["newmainuri"]
+    header_class.sub_category_label = data["newsublabel"]
+    header_class.sub_category_uri = data["newsuburi"]
+
+    header_class.save()

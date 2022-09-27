@@ -52,6 +52,8 @@ def build_query(labels):
 
     query += ' }'
 
+    print(query)
+
     return query
 
 
@@ -68,6 +70,8 @@ def extract_Qlabel(wikidatalink: str):
 def evaluate_response(json_data, result):
     findings = json_data['results']['bindings']
     for entry in findings:
+        if len(entry) == 0:
+            continue
         key = next(iter(entry))
         # print(entry[key]['value'])
         result[key]['parentclasses'].append(entry[key]['value'])

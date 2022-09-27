@@ -1,3 +1,5 @@
+# This is meant to provide information about tools in our backend. It can be the basis for tools recommendation.
+# Some of the information can should go to the provenance record (like an ID e.g., or unique tool name)
 from django.db import models
 
 

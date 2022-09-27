@@ -1,7 +1,9 @@
 import json
 
 import pandas as pd
+# from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
+# from django.utils.decorators import method_decorator
 # from iknow_tools.views import get_all_tools_workflow_info
 from rest_framework.response import Response
 # from distutils.log import error
@@ -11,7 +13,11 @@ from rest_framework.views import APIView
 
 from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
-from planthub.iknow_manager.models import CPAmapping, safe_querymetadata
+from planthub.iknow_manager.models import (
+    CPAmapping,
+    create_new_headerclass,
+    get_all_headerclasses,
+)
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
     append_editCpa_step,
@@ -38,10 +44,8 @@ from planthub.iknow_sgpc.views import (  # get_all_header_mappings,; get_history
     edit_cpa_mappings,
     edit_schema,
     get_all_projects_name,
-    get_all_sgp_info,
     get_all_sgpc_info,
     get_history_sgpc_renamed,
-    get_single_sgpc_info,
     is_in_progress_sgpc,
     sgpc_from_key,
     undo_collection_till_phase,
@@ -55,7 +59,6 @@ from .pdutil.pdreader import (  # get_json_from_csv,; get_list_from_csv,
 
 # import time
 
-# from copyreg import constructor
 
 jr_error = JsonResponse({"msg": "error"})
 jr_error_message = {"msg": "error"}
@@ -63,17 +66,7 @@ jr_error_message = {"msg": "error"}
 # everything about REQUEST HANDLING in django
 # https://docs.djangoproject.com/en/4.0/ref/request-response/
 
-# response error codes ... response codes für django rest_framework nachschauen und dann benutzen
-# redirect ... goto und siehe svelte
-# tool init
-
-
 # TODO:
-#   - implement testcontainers to run (cleaning/linking)
-#   - reading and returning data of linking results (just as cleaningresult for now)
-#   - implement rdf-ization for cleaned table data
-#   - implement rdf-ization for linked table data
-#   - undo functionality (just senseful naming of steps as a dropdown)
 
 #   - check validity of each applied action
 #   - return appropriate error codes for specific failures
@@ -81,6 +74,8 @@ jr_error_message = {"msg": "error"}
 
 
 class CreateCollectionView(APIView):
+    # login required class decorator
+    # @method_decorator(login_required)
     def post(self, request):
         return createCollection(request)
 
@@ -157,14 +152,15 @@ class FetchDataView(APIView):
         req_datasets = (request.GET.get('datasets', '') != '')
         req_history = (request.GET.get('history', '') != '')
         req_type = request.GET.get('type', '')
+        req_categories = (request.GET.get('categories', '') != '')
 
         if req_type == "cleaning":
-            data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history)
+            data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history, req_categories)
         if req_type == "linking":
             print("preparing linking result")
             data = self.prepare_linking_result(sgpc, req_names, req_datasets, req_history)
         else:
-            data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history)
+            data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history, req_categories)
 
         # print("returning prepared datasets: ", data)
         # print(type(data))
@@ -182,6 +178,7 @@ class FetchDataView(APIView):
         datasets in a sgpc.
         """
         prepared_datasets = {}
+        response_data = {}
 
         for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
             # print("sgp.id: ", sgp.id, " sgp.bioprojectname: ", sgp.bioprojectname)
@@ -193,12 +190,13 @@ class FetchDataView(APIView):
 
             helper["dataset"] = self.load_unique_mappings(sgp)
 
-            if req_history and i == 0:
-                helper["history"] = get_history_sgpc_renamed(sgpc)
-
             prepared_datasets[i] = helper
 
-        return prepared_datasets
+        if req_history:
+            response_data["history"] = get_history_sgpc_renamed(sgpc)
+        response_data["tabledata"] = prepared_datasets
+
+        return response_data
 
     def load_unique_mappings(self, sgp):
         input_dataset = get_latest_input_dataset(sgp)
@@ -232,12 +230,14 @@ class FetchDataView(APIView):
 
         return mappings
 
-    def prepare_datasets(self, sgpc: SGPC, req_names: bool, req_datasets: bool, req_history: bool):
+    def prepare_datasets(self, sgpc: SGPC, req_names: bool, req_datasets: bool,
+                         req_history: bool, req_categories: bool):
         """
         Load and return content and required information on all
         datasets in a sgpc.
         """
         prepared_datasets = {}
+        response_data = {}
 
         for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
             # print("sgp.id: ", sgp.id, " sgp.bioprojectname: ", sgp.bioprojectname)
@@ -249,12 +249,18 @@ class FetchDataView(APIView):
                 helper["filename"] = sgp.original_filename
             if req_datasets:
                 helper["dataset"] = get_list_from_csv_first10rows(dataset.file_field.path)
-            if req_history and i == 0:
-                helper["history"] = get_history_sgpc_renamed(sgpc)
 
             prepared_datasets[i] = helper
 
-        return prepared_datasets
+        if req_history:
+            response_data["history"] = get_history_sgpc_renamed(sgpc)
+
+        if req_categories:
+            response_data["categories"] = get_all_headerclasses()
+
+        response_data["tabledata"] = prepared_datasets
+
+        return response_data
 
 
 class DatasetInit(APIView):
@@ -278,15 +284,49 @@ class DatasetInit(APIView):
             for key in data["tabledata"].keys():
                 if data["tabledata"][key]["sgp_pk"] == sgp.pk:
                     if len(sgp.provenanceRecord) == 0:
+                        self.check_for_created_categories(data["tabledata"][key]["selection"])
+                        print("PROJECT REQUESTDATA: ")
+                        print(data["tabledata"][key])
                         self.safe_init_step(sgp, data["tabledata"][key])
-                        safe_querymetadata(data["tabledata"][key]["selection"],
-                                           sgp.original_table_header, sgp.bioprojectname)
                     else:
                         print("Error, trying to apply init phase to provenance record that is not empty.")
 
         response = JsonResponse({"success": "succesfully initialized"})
 
         return response
+
+    def check_for_created_categories(self, selection_data):
+        # TODO: - Validate user entry here
+        #       - shouldnt be empty and should be valid url
+        new_categories = {}
+        print("SELECTION DATA: ")
+        print(selection_data)
+        for key, value in selection_data["newmainlabel"].items():
+            new_categories[key] = {}
+            new_categories[key]["newmainlabel"] = value
+            new_categories[key]["newmainuri"] = selection_data["newmainuri"][key]
+            new_categories[key]["newsublabel"] = selection_data["newsublabel"][key]
+            new_categories[key]["newsuburi"] = selection_data["newsuburi"][key]
+
+            selection_data["parent"][key] = selection_data["newmainlabel"][key]
+            selection_data["child"][key] = selection_data["newsublabel"][key]
+            selection_data["mapping"][key] = selection_data["newsuburi"][key]
+
+        for key, value in selection_data["newsublabel"].items():
+            if key in new_categories:
+                continue
+            else:
+                new_categories[key] = {}
+                new_categories[key]["newmainlabel"] = selection_data["parent"][key]
+                # TODO: - add main category uri
+                new_categories[key]["newsublabel"] = selection_data["newsublabel"][key]
+                new_categories[key]["newsuburi"] = selection_data["newsuburi"][key]
+
+                selection_data["child"][key] = selection_data["newsublabel"][key]
+                selection_data["mapping"][key] = selection_data["newsuburi"][key]
+
+        for key, value in new_categories.items():
+            create_new_headerclass(value)
 
     def safe_init_step(self, sgp: SGP, data, method: str = "iknow-method"):
         sgp.provenanceRecord[0] = {}
@@ -496,7 +536,7 @@ class EditMappingsView(APIView):
                 return jr_error
 
             apply_mapping_edits_to_sgp(sgp, data['edits'][sgp_number])
-            append_editMapping_step(sgp, data['edits'])
+            append_editMapping_step(sgp, data['edits'][sgp_number])
 
         return Response()
 
@@ -550,17 +590,6 @@ class ResetCollectionView(APIView):
         return JsonResponse({"phase": "linking"})
 
 
-# this view is unnecessary for now
-class SGPInfoView(APIView):
-    def get(self, request):
-        # tic = time.perf_counter()
-        response = JsonResponse({"tabledata": get_all_sgp_info()})
-
-        # toc = time.perf_counter()
-        # print(f"get_all_sgp_info() took {toc - tic:0.4f} seconds")
-        return response
-
-
 class SGPCInfoView(APIView):
     def get(self, request):
         # tic = time.perf_counter()
@@ -569,27 +598,6 @@ class SGPCInfoView(APIView):
 
         # toc = time.perf_counter()
         # print(f"get_all_sgpc_info() took {toc - tic:0.4f} seconds")
-        return response
-
-
-class SingleSGPCInfoView(APIView):
-    def get(self, request):
-        sgpc_pk = request.GET.get('sgpc_pk', default=None)
-        response_content = {"tabledata": get_single_sgpc_info(sgpc_pk)}
-
-        response = JsonResponse(response_content)
-
-        return response
-
-
-class FetchProvrecView(APIView):
-    def get(self, request):
-        sgp_pk = request.GET.get('sgp_pk', default=None)
-
-        response_content = {"provrec": get_provrec(sgp_pk)}
-
-        response = JsonResponse(response_content)
-
         return response
 
 
@@ -678,6 +686,7 @@ class RerunCollectionView(APIView):
 
         self.rerun_sgp(sgp_data, sgpc_copy)
 
+        # rerun phases from sgpc provenance record (that includes applying user changes)
         self.rerun_sgpc(sgpc_copy, old_sgpc_provrec, rerun_subclasses, rerun_cpa)
 
         return Response()
@@ -765,6 +774,7 @@ class RerunCollectionView(APIView):
 
 
 class ChangeDatasetAndRerunView(APIView):
+    # TODO: - check if new uploaded dataset has the same columns as original one
     def post(self, request):
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
         sgpc = sgpc_from_key(sgpc_pk)
@@ -876,6 +886,12 @@ class DeleteDBView(APIView):
         return Response()
 
 
+# TODO: - save query meta data here when there is the proper request from querybuilding page
+class SaveQueryMetadataView(APIView):
+    def post(self, request):
+        pass
+
+
 def find_subclasses(sgpc: SGPC):
     """
     Generates subclass-mappings based on data in the collection and
@@ -904,6 +920,7 @@ def find_mappings(sgpc: SGPC):
     Generates cpa-mappings based on data in the collection and
     the manually inserted CPAmapping database entries.
     """
+    # TODO: - make sure duplicated mappings aren't saved
     mappings_helper = {}
 
     sgp: SGP

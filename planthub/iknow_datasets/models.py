@@ -1,8 +1,6 @@
 # from django.conf import settings
 from django.db import models
 
-# import os
-
 
 class Dataset(models.Model):
     #  General Info

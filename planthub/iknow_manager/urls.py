@@ -14,14 +14,11 @@ from .views import (
     FetchCollectionProvenance,
     FetchCpaView,
     FetchDataView,
-    FetchProvrecView,
     FetchSubclassesView,
     LinkingView,
     RerunCollectionView,
     ResetCollectionView,
     SGPCInfoView,
-    SGPInfoView,
-    SingleSGPCInfoView,
     UploadToCollectionView,
 )
 
@@ -62,11 +59,8 @@ urlpatterns = [
 
     path('fetch-bioproject-names', FetchBioprojectNamesView.as_view()),
 
-    path('all-sgp-info', SGPInfoView.as_view()),
-
     path('all-sgpc-info', SGPCInfoView.as_view()),
 
-    path('single-sgpc-info', SingleSGPCInfoView.as_view()),
 
     # returns dataset data etc. for specific sgproject
     # this might be a good one to merge into
@@ -76,7 +70,6 @@ urlpatterns = [
 
 
     # -------------------------------------------------#
-    path('fetch-provrec', FetchProvrecView.as_view()),
 
     path('fetch-cpa', FetchCpaView.as_view()),
 
@@ -88,16 +81,15 @@ urlpatterns = [
 
     path('editschema', EditSchemaView.as_view()),
 
-    path('resetcollectionto', ResetCollectionView.as_view()),
-    # path('history', ProjectHistoryView.as_view()),
+    path('fetch-collection-provenance', FetchCollectionProvenance.as_view()),
 
-    path('delete-database', DeleteDBView.as_view()),
+    path('resetcollectionto', ResetCollectionView.as_view()),
 
     path('copy-collection', CopyCollectionView.as_view()),
-
-    path('fetch-collection-provenance', FetchCollectionProvenance.as_view()),
 
     path('rerun-collection', RerunCollectionView.as_view()),
 
     path('change-datasets-and-rerun', ChangeDatasetAndRerunView.as_view()),
+
+    path('delete-database', DeleteDBView.as_view()),
 ]

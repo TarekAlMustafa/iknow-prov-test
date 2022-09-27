@@ -1,4 +1,6 @@
 # from django.shortcuts import render
+# THis file is saving provenance information about each sgp the main functionality
+# is done in iknow_manager.
 
 import pandas as pd
 from django.core.exceptions import ObjectDoesNotExist
