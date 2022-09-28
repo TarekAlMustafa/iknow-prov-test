@@ -11,18 +11,17 @@ from planthub.iknow_datasets.views import dataset_from_key
 from .models import SGP
 
 
-def create_sgp(bioprojectname: str):
+def sgp_create() -> SGP:
     """
-    Creates a new sgp with given Bioprojectname.
+    Creates a new sgp.
     """
     new_sgp = SGP()
-    new_sgp.bioprojectname = bioprojectname
     new_sgp.save()
 
     return new_sgp
 
 
-def sgp_from_key(key: str):
+def sgp_from_key(key: str) -> SGP:
     """
     Returns a safely obtained instance of SGP
     from a given key.
@@ -41,17 +40,17 @@ def sgp_from_key(key: str):
     return sgp
 
 
-def set_phase_state(sgp: SGP, new_state: str):
+def sgp_set_phase_state(sgp: SGP, new_state: str):
     """
     Set the state of the current phase in the provenance
     record of the given sgp.
     """
-    cur_step = str(len(sgp.provenanceRecord)-1)
-    sgp.provenanceRecord[cur_step]["state"] = new_state
+    cur_phase_num = str(len(sgp.provenanceRecord)-1)
+    sgp.provenanceRecord[cur_phase_num]["state"] = new_state
     sgp.save()
 
 
-def append_linking_step(sgp: SGP, input_pk, output_pk, method: str = "iknow-method"):
+def sgp_append_linking_step(sgp: SGP, input_pk, output_pk, method: str = "iknow-method"):
     """
     On start of linking tool, appends information
     in the provenance record.
@@ -69,6 +68,10 @@ def append_linking_step(sgp: SGP, input_pk, output_pk, method: str = "iknow-meth
 
 
 def append_cleaning_step(sgp: SGP, method, d_pk_in, d_pk_out):
+    """
+    On start of cleaning tool, appends information
+    in the provenance record.
+    """
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "cleaning"
@@ -80,7 +83,11 @@ def append_cleaning_step(sgp: SGP, method, d_pk_in, d_pk_out):
     sgp.save()
 
 
-def append_editMapping_step(sgp: SGP, edits: dict, method: str = "iknow-method"):
+def sgp_append_mapping_step(sgp: SGP, edits: dict, method: str = "iknow-method"):
+    """
+    Appends information of user edits on the linkingresult,
+    to the provenance record.
+    """
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "editmapping"
@@ -91,7 +98,10 @@ def append_editMapping_step(sgp: SGP, edits: dict, method: str = "iknow-method")
     sgp.save()
 
 
-def append_editCpa_step(sgp: SGP, method: str = "iknow-method"):
+def sgp_append_cpa_step(sgp: SGP, method: str = "iknow-method"):
+    """
+    Appends empty phase, marking cpamapping as completed.
+    """
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "editcpa"
@@ -101,7 +111,10 @@ def append_editCpa_step(sgp: SGP, method: str = "iknow-method"):
     sgp.save()
 
 
-def append_schemaRefine_step(sgp: SGP, method: str = "iknow-method"):
+def sgp_append_schema_step(sgp: SGP, method: str = "iknow-method"):
+    """
+    Appends empty phase, marking schemarefinement as completed.
+    """
     next_step = str(len(sgp.provenanceRecord))
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "schemarefine"
@@ -111,116 +124,136 @@ def append_schemaRefine_step(sgp: SGP, method: str = "iknow-method"):
     sgp.save()
 
 
-def get_latest_output_dataset(sgp: SGP) -> Dataset:
+def sgp_append_init_step(sgp: SGP, init_data, method: str = "iknow-method"):
+    sgp.provenanceRecord[0] = {}
+    sgp.provenanceRecord[0]["type"] = "init"
+    sgp.provenanceRecord[0]["selection"] = init_data
+    sgp.provenanceRecord[0]["actions"] = {}
+    sgp.provenanceRecord[0]["actions"]["method"] = method
+
+    sgp.save()
+
+
+def sgp_get_output_file(sgp: SGP) -> Dataset:
     """
-    Searches backwards through provenance record and returns
-    the latest output dataset. If the latest is in init-phase
-    -> returns source dataset. Returns False if error.
+    Returns latest output dataset or source dataset
+    (if in init phase). Returns False if error.
     """
 
-    cur_step_num = len(sgp.provenanceRecord)-1
+    cur_phase_num = len(sgp.provenanceRecord)-1
 
-    if cur_step_num <= 1:
+    # if in init phase
+    if cur_phase_num <= 1:
         if sgp.source_dataset.all().count() > 0:
             return sgp.source_dataset.all()[0]
         else:
-            print("No source dataset found in sgp: ", sgp.pk)
+            # No source dataset found in sgp
             return False
 
-    for i in range(cur_step_num, -1, -1):
+    for i in range(cur_phase_num, -1, -1):
         try:
             phase_type = sgp.provenanceRecord[str(i)]["type"]
         except KeyError:
-            print("No phase type found in sgp: ", sgp.pk, " phase: ", i)
+            # No phase type found in sgp:
             return False
 
         if phase_type == "linking" or phase_type == "cleaning":
             try:
+                # get latest output dataset
                 dataset_pk = sgp.provenanceRecord[str(i)]["actions"]["output"]
-                print("Loading dataset with pk: ", dataset_pk)
                 dataset = dataset_from_key(dataset_pk)
-                print("Returning dataset: ", dataset)
+
                 return dataset
             except KeyError:
-                print("No action or output key found in sgp: ", sgp.pk, " phase: ", i)
+                # No action or output key found in sgp
                 return False
         elif phase_type == "init":
             if sgp.source_dataset.all().count() > 0:
                 return sgp.source_dataset.all()[0]
             else:
-                print("No source dataset found in sgp: ", sgp.pk, " phase: ", i)
+                # No source dataset found in sgp
                 return False
 
     return False
 
 
-def get_mapping_dataset(sgp: SGP) -> Dataset:
-    cur_step_num = len(sgp.provenanceRecord)-1
+def sgp_get_mapping_file(sgp: SGP) -> Dataset:
+    """
+    Returns the mapping file (linking result output),
+    or False if an error occured.
+    """
+    cur_phase_num = len(sgp.provenanceRecord)-1
 
-    for i in range(cur_step_num, -1, -1):
+    for i in range(cur_phase_num, -1, -1):
         try:
             phase_type = sgp.provenanceRecord[str(i)]["type"]
         except KeyError:
-            print("No phase type found in sgp: ", sgp.pk, " phase: ", i)
+            # No phase type found in sgp
             return False
 
         if phase_type == "linking":
             try:
+                # get linking output dataset
                 dataset_pk = sgp.provenanceRecord[str(i)]["actions"]["output"]
-                print("Loading dataset with pk: ", dataset_pk)
                 dataset = dataset_from_key(dataset_pk)
-                print("Returning dataset: ", dataset)
+
                 return dataset
             except KeyError:
-                print("No action or output key found in sgp: ", sgp.pk, " phase: ", i)
+                # No action or output key found in sgp
                 return False
 
     return False
 
 
-def get_latest_input_dataset(sgp: SGP) -> Dataset:
+def sgp_get_input_file(sgp: SGP) -> Dataset:
     """
-    Searches backwards through provenance record and returns
-    the latest input dataset. If the latest is in init-phase
-    -> returns source dataset. Returns False if error.
+    Returns latest input dataset or source dataset
+    (if in init phase). Returns False if error.
     """
-    cur_step_num = len(sgp.provenanceRecord)-1
 
-    if cur_step_num <= 1:
+    cur_phase_num = len(sgp.provenanceRecord)-1
+
+    # if in init phase
+    if cur_phase_num <= 1:
         if sgp.source_dataset.all().count() > 0:
             return sgp.source_dataset.all()[0]
         else:
-            print("No source dataset found in sgp: ", sgp.pk)
+            # No source dataset found in sgp
             return False
 
-    for i in range(cur_step_num, -1, -1):
+    for i in range(cur_phase_num, -1, -1):
         try:
             phase_type = sgp.provenanceRecord[str(i)]["type"]
         except KeyError:
-            print("No phase type found in sgp: ", sgp.pk, " phase: ", i)
+            # No phase type found in sgp:
             return False
 
         if phase_type == "linking" or phase_type == "cleaning":
             try:
+                # get latest output dataset
                 dataset_pk = sgp.provenanceRecord[str(i)]["actions"]["input"]
-                print("Loading dataset with pk: ", dataset_pk)
                 dataset = dataset_from_key(dataset_pk)
-                print("Returning dataset: ", dataset)
+
                 return dataset
             except KeyError:
-                print("No action or input key found in sgp: ", sgp.pk, " phase: ", i)
+                # No action or output key found in sgp
                 return False
         elif phase_type == "init":
             if sgp.source_dataset.all().count() > 0:
                 return sgp.source_dataset.all()[0]
             else:
-                print("No source dataset found in sgp: ", sgp.pk, " phase: ", i)
+                # No source dataset found in sgp
                 return False
 
     return False
 
 
-def get_column_types(sgp: SGP, binary=False):
+def sgp_get_col_types(sgp: SGP, binary=False):
+    """
+    Returns string-list of types (String, Integer, ...)
+    for each column. String = 1 and other = 0 if binary
+    is True.
+    """
     selections = sgp.provenanceRecord['0']['selection']
     col_types = []
 
@@ -235,7 +268,7 @@ def get_column_types(sgp: SGP, binary=False):
             else:
                 col_types.append(selections['type'][str(x)])
         except (Exception):
-            print(f"Error: Key not were its supposed to be in prov rec {sgp.pk} ")
+            # Key not were its supposed to be in prov rec
             return False
 
     return col_types
@@ -256,19 +289,19 @@ def get_last_phasetype(sgp: SGP):
         return False
 
 
-def is_in_progress(sgp: SGP):
+def sgp_in_progress(sgp: SGP):
     """
     Checks if tool is running for a given sgp.
     """
-    cur_step = str(len(sgp.provenanceRecord)-1)
+    cur_phase_num = str(len(sgp.provenanceRecord)-1)
 
-    if cur_step not in sgp.provenanceRecord:
+    if cur_phase_num not in sgp.provenanceRecord:
         return False
 
-    if "state" not in sgp.provenanceRecord[cur_step]:
+    if "state" not in sgp.provenanceRecord[cur_phase_num]:
         return False
 
-    cur_state = sgp.provenanceRecord[cur_step]["state"]
+    cur_state = sgp.provenanceRecord[cur_phase_num]["state"]
     if cur_state == "running":
         return True
     else:
@@ -283,7 +316,11 @@ def get_original_header(sgp: SGP):
     return list(sgp.original_table_header.values())
 
 
-def get_provrec(sgp_pk):
+def sgp_get_provrec(sgp_pk):
+    """
+    Returns provenance record for given sgp_pk, or
+    False if sgp does not exist.
+    """
     sgp = sgp_from_key(sgp_pk)
 
     if sgp is False:
@@ -292,7 +329,7 @@ def get_provrec(sgp_pk):
     return sgp.provenanceRecord
 
 
-def replace_mapping_file_with_copy(sgp: SGP):
+def sgp_replace_mapping_file_with_copy(sgp: SGP):
     """
     Copies and replaces the mapping file in a SGP.
     If there is no linking phase, or the Dataset object does
@@ -313,32 +350,46 @@ def replace_mapping_file_with_copy(sgp: SGP):
             sgp.save()
 
 
-def apply_mapping_edits_to_sgp(sgp: SGP, edits):
-    # print("Applying edits: ")
-    # print(edits)
-    # print("to sgp ", sgp.pk)
-    mapping_dataset = get_mapping_dataset(sgp)
-    print("Found Mapping file: ", mapping_dataset.file_field.name)
+def sgp_edit_mapping(sgp: SGP, edits: dict):
+    """
+    Applies user edits on the linking result,
+    to the specific cells in the mapping file.
+    """
+    if len(edits) == 0:
+        return
+
+    mapping_dataset = sgp_get_mapping_file(sgp)
     df = pd.read_csv(mapping_dataset.file_field.path)
 
     # TODO: apply edit on all occurences here
     for key in edits:
-        col = int(edits[key]['col'])
-        row = int(edits[key]['row'])
-        print(f"col: {col} row: {row} original_val: {df.iat[row, col]}")
-        df.iat[row, col] = str(edits[key]['value'])
+        try:
+            col = int(edits[key]['col'])
+            row = int(edits[key]['row'])
+            df.iat[row, col] = str(edits[key]['value'])
+        except KeyError:
+            # TODO: - handle error
+            # incorrect edits
+            break
 
     df.to_csv(mapping_dataset.file_field.path, index=False)
 
 
-def replace_source_dataset(sgp: SGP, new_dataset: Dataset):
+def sgp_replace_source_dataset(sgp: SGP, new_dataset: Dataset):
+    """
+    Replaces source dataset of the sgp.
+    """
     sgp.source_dataset.clear()
     sgp.source_dataset.add(new_dataset)
     sgp.datasets_copied = False
     sgp.save()
 
 
-def reset_sgp_until_linking(sgp: SGP):
+def sgp_undo_till_linking(sgp: SGP):
+    """
+    Undoes every phase in an sgp, until (not including) the
+    linking phase. Does not delete datasets/files.
+    """
     prov_rec = sgp.provenanceRecord
     for i in range(len(sgp.provenanceRecord)-1, 0, -1):
         cur_type = prov_rec[str(i)]['type']

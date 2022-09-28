@@ -3,6 +3,7 @@ import json
 import pandas as pd
 # from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
+from rest_framework.decorators import api_view
 # from django.utils.decorators import method_decorator
 # from iknow_tools.views import get_all_tools_workflow_info
 from rest_framework.response import Response
@@ -15,40 +16,41 @@ from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
 from planthub.iknow_manager.models import (
     CPAmapping,
+    IknowEntity,
     create_new_headerclass,
     get_all_headerclasses,
 )
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
-    append_editCpa_step,
-    append_editMapping_step,
-    append_linking_step,
-    append_schemaRefine_step,
-    apply_mapping_edits_to_sgp,
-    create_sgp,
-    get_column_types,
-    get_latest_input_dataset,
-    get_latest_output_dataset,
-    get_mapping_dataset,
-    get_provrec,
-    replace_mapping_file_with_copy,
-    replace_source_dataset,
-    reset_sgp_until_linking,
-    set_phase_state,
+    sgp_append_cpa_step,
+    sgp_append_init_step,
+    sgp_append_linking_step,
+    sgp_append_mapping_step,
+    sgp_append_schema_step,
+    sgp_create,
+    sgp_edit_mapping,
     sgp_from_key,
+    sgp_get_col_types,
+    sgp_get_input_file,
+    sgp_get_mapping_file,
+    sgp_get_output_file,
+    sgp_get_provrec,
+    sgp_replace_mapping_file_with_copy,
+    sgp_replace_source_dataset,
+    sgp_set_phase_state,
+    sgp_undo_till_linking,
 )
-from planthub.iknow_sgpc.models import SGPC
+from planthub.iknow_sgpc.models import SGPC, BioProject
 from planthub.iknow_sgpc.views import (  # get_all_header_mappings,; get_history_sgpc,
-    copy_collection,
-    createCollection,
-    edit_cpa_mappings,
-    edit_schema,
-    get_all_projects_name,
-    get_all_sgpc_info,
-    get_history_sgpc_renamed,
-    is_in_progress_sgpc,
+    sgpc_copy,
+    sgpc_create,
+    sgpc_edit_cpa,
+    sgpc_edit_schema,
     sgpc_from_key,
-    undo_collection_till_phase,
+    sgpc_history_renamed,
+    sgpc_in_progress,
+    sgpc_info,
+    sgpc_undo_till_phase,
 )
 
 from .cleaning_scripts import findsubclasses, wikitesttool
@@ -59,6 +61,7 @@ from .pdutil.pdreader import (  # get_json_from_csv,; get_list_from_csv,
 
 # import time
 
+IKNOW_NAMESPACE = "https://planthub.idiv.de/iknow/wiki/"
 
 jr_error = JsonResponse({"msg": "error"})
 jr_error_message = {"msg": "error"}
@@ -73,14 +76,14 @@ jr_error_message = {"msg": "error"}
 #   - error handling etc. when client uploads files
 
 
-class CreateCollectionView(APIView):
+class CreateSgpcView(APIView):
     # login required class decorator
     # @method_decorator(login_required)
     def post(self, request):
-        return createCollection(request)
+        return sgpc_create(request)
 
 
-class UploadToCollectionView(APIView):
+class UploadToSgpcView(APIView):
     def post(self, request):
         """
         Client uploads datasets after Collection creation.
@@ -103,7 +106,7 @@ class UploadToCollectionView(APIView):
 
             # create sgp and handle file
             new_dataset = handle_uploaded_file(request.FILES[key], filename)
-            new_sgp = create_sgp(sgpc.bioprojectname)
+            new_sgp = sgp_create()
             new_sgp.source_dataset.add(new_dataset)
             new_sgp.original_filename = filename
             sgpc.associated_sgprojects.add(new_sgp)
@@ -135,6 +138,12 @@ class FetchDataView(APIView):
     def get(self, request):
         """
         Client fetches latest datasets from a sgpc.
+        (required) fetching query parameters:
+        @ req_names         -> filenames
+        @ req_datasets      -> current output file or linking result
+        @ req_history       -> sgpc history
+        @ req_type          -> phase type
+        @ req_categories    -> header classes
         """
         # get parameters from request
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
@@ -143,7 +152,7 @@ class FetchDataView(APIView):
         if sgpc is False:
             return jr_error
 
-        if is_in_progress_sgpc(sgpc):
+        if sgpc_in_progress(sgpc):
             print("Error in FetchDataView: sgpc ", sgpc.pk, " is still running.")
             return jr_error
 
@@ -157,19 +166,12 @@ class FetchDataView(APIView):
         if req_type == "cleaning":
             data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history, req_categories)
         if req_type == "linking":
-            print("preparing linking result")
             data = self.prepare_linking_result(sgpc, req_names, req_datasets, req_history)
         else:
             data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history, req_categories)
 
-        # print("returning prepared datasets: ", data)
-        # print(type(data))
-
         response = JsonResponse(data, safe=False)
-        # for key in data:
-        #     print(f"Key: {key} value: {data[key]}")
 
-        # return Response()
         return response
 
     def prepare_linking_result(self, sgpc: SGPC, req_names: bool, req_datasets: bool, req_history: bool):
@@ -193,14 +195,19 @@ class FetchDataView(APIView):
             prepared_datasets[i] = helper
 
         if req_history:
-            response_data["history"] = get_history_sgpc_renamed(sgpc)
+            response_data["history"] = sgpc_history_renamed(sgpc)
         response_data["tabledata"] = prepared_datasets
 
         return response_data
 
     def load_unique_mappings(self, sgp):
-        input_dataset = get_latest_input_dataset(sgp)
-        mapping_dataset = get_mapping_dataset(sgp)
+        """
+        Searches for unique mappings of the mapping file
+        of the sgp, and combines it with their original
+        cell values for display in frontend.
+        """
+        input_dataset = sgp_get_input_file(sgp)
+        mapping_dataset = sgp_get_mapping_file(sgp)
 
         if input_dataset is False or mapping_dataset is False:
             return jr_error_message
@@ -208,10 +215,11 @@ class FetchDataView(APIView):
         input_df = pd.read_csv(input_dataset.file_field.path)
         mapping_dataset = pd.read_csv(mapping_dataset.file_field.path)
 
-        col_types = get_column_types(sgp, binary=True)
+        col_types = sgp_get_col_types(sgp, binary=True)
 
         all_mappings = {}
 
+        # load each column separately (that's how they are displayed in frontend)
         for i, col_name in enumerate(input_df):
             if col_types[i]:
                 col_mappings = self.load_unique_col_mappings(input_df[col_name], mapping_dataset[col_name], col_name)
@@ -220,6 +228,9 @@ class FetchDataView(APIView):
         return all_mappings
 
     def load_unique_col_mappings(self, col, result_col, col_name):
+        """
+        Loads unique mappings of given column.
+        """
         already_seen = []
         mappings = [[col_name, f"{col_name} links"]]
 
@@ -241,7 +252,7 @@ class FetchDataView(APIView):
 
         for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
             # print("sgp.id: ", sgp.id, " sgp.bioprojectname: ", sgp.bioprojectname)
-            dataset = get_latest_output_dataset(sgp)
+            dataset = sgp_get_output_file(sgp)
             helper = {}
             helper["sgp_pk"] = sgp.pk
 
@@ -253,7 +264,7 @@ class FetchDataView(APIView):
             prepared_datasets[i] = helper
 
         if req_history:
-            response_data["history"] = get_history_sgpc_renamed(sgpc)
+            response_data["history"] = sgpc_history_renamed(sgpc)
 
         if req_categories:
             response_data["categories"] = get_all_headerclasses()
@@ -263,7 +274,7 @@ class FetchDataView(APIView):
         return response_data
 
 
-class DatasetInit(APIView):
+class ColumntypesView(APIView):
     def post(self, request):
         """
         Client selects types and annotations per column.
@@ -277,65 +288,65 @@ class DatasetInit(APIView):
         if sgpc is False:
             return jr_error
 
+        sgps = sgpc.associated_sgprojects.all()
+
+        for sgp in sgps:
+            if len(sgp.provenanceRecord) > 0:
+                # trying to apply init phase to provenance record that is not empty
+                return jr_error
+
         # loops spg's and matches the request data
-        # TODO: - change to more safe and elegant (this is very ugly)
         sgp: SGP
-        for sgp in sgpc.associated_sgprojects.all():
+        for sgp in sgps:
             for key in data["tabledata"].keys():
                 if data["tabledata"][key]["sgp_pk"] == sgp.pk:
-                    if len(sgp.provenanceRecord) == 0:
-                        self.check_for_created_categories(data["tabledata"][key]["selection"])
-                        print("PROJECT REQUESTDATA: ")
-                        print(data["tabledata"][key])
-                        self.safe_init_step(sgp, data["tabledata"][key])
-                    else:
-                        print("Error, trying to apply init phase to provenance record that is not empty.")
+                    # this executes ones per sgp in the sgpc
+                    self.check_for_created_categories(data["tabledata"][key]["created"],
+                                                      data["tabledata"][key]["selection"])
+
+                    sgp_append_init_step(sgp, data["tabledata"][key]["selection"])
 
         response = JsonResponse({"success": "succesfully initialized"})
 
         return response
 
-    def check_for_created_categories(self, selection_data):
+    def check_for_created_categories(self, created, selection):
+        """
+        Creates new header classes based on user inputs. Adds
+        newly created classes to the selection data.
+        """
+
         # TODO: - Validate user entry here
         #       - shouldnt be empty and should be valid url
+
         new_categories = {}
-        print("SELECTION DATA: ")
-        print(selection_data)
-        for key, value in selection_data["newmainlabel"].items():
-            new_categories[key] = {}
-            new_categories[key]["newmainlabel"] = value
-            new_categories[key]["newmainuri"] = selection_data["newmainuri"][key]
-            new_categories[key]["newsublabel"] = selection_data["newsublabel"][key]
-            new_categories[key]["newsuburi"] = selection_data["newsuburi"][key]
+        for key, value in created["newsuburi"].items():
+            if key in created["newmainuri"]:
+                create_new_headerclass({
+                    "newsuburi": value,
+                    "newsublabel": created["newsublabel"][key],
+                    "newmainuri": created["newmainuri"][key],
+                    "newmainlabel": created["newmainlabel"][key]
+                })
+            else:
+                create_new_headerclass({
+                    "newsuburi": value,
+                    "newsublabel": created["newsublabel"][key],
+                    "newmainlabel": selection["parent"][key]
+                })
 
-            selection_data["parent"][key] = selection_data["newmainlabel"][key]
-            selection_data["child"][key] = selection_data["newsublabel"][key]
-            selection_data["mapping"][key] = selection_data["newsuburi"][key]
+        # add created to selection
+        for key in created["newmainlabel"]:
+            selection["parent"][key] = created["newmainlabel"][key]
+            selection["child"][key] = created["newsublabel"][key]
+            selection["mapping"][key] = created["newsuburi"][key]
 
-        for key, value in selection_data["newsublabel"].items():
+        for key in created["newsublabel"]:
             if key in new_categories:
                 continue
             else:
-                new_categories[key] = {}
-                new_categories[key]["newmainlabel"] = selection_data["parent"][key]
-                # TODO: - add main category uri
-                new_categories[key]["newsublabel"] = selection_data["newsublabel"][key]
-                new_categories[key]["newsuburi"] = selection_data["newsuburi"][key]
-
-                selection_data["child"][key] = selection_data["newsublabel"][key]
-                selection_data["mapping"][key] = selection_data["newsuburi"][key]
-
-        for key, value in new_categories.items():
-            create_new_headerclass(value)
-
-    def safe_init_step(self, sgp: SGP, data, method: str = "iknow-method"):
-        sgp.provenanceRecord[0] = {}
-        sgp.provenanceRecord[0]["type"] = "init"
-        sgp.provenanceRecord[0]["selection"] = data["selection"]
-        sgp.provenanceRecord[0]["actions"] = {}
-        sgp.provenanceRecord[0]["actions"]["method"] = method
-
-        sgp.save()
+                selection["child"][key] = created["newsublabel"][key]
+                selection["mapping"][key] = created["newsuburi"][key]
 
 
 class CleaningView(APIView):
@@ -344,12 +355,7 @@ class CleaningView(APIView):
         if "sgpc_pk" not in json_data.keys():
             return jr_error
 
-        # temp_datasets = []
-
-        # # code runs AFTER CLEANING
-        # for i, key in enumerate(json_data["actions"]):
-        #     # chosen cleaning method, (..= -1 means none)
-        #     method = json_data['actions'][key]['method']
+        # TODO: implement analog to LinkingView and LinkingToolsResponse
 
         return Response()
 
@@ -373,7 +379,7 @@ class LinkingtoolsResponse(HttpResponse):
                 # TODO:
                 #   - own function, cased on method
                 print(f"Running Job with method: {method} for file: {input_file_path}.")
-                col_types = get_column_types(job[0])
+                col_types = sgp_get_col_types(job[0])
 
                 # RUNS QUERY ONLY FOR String-type columns!!!
                 wikitesttool.main(
@@ -381,7 +387,7 @@ class LinkingtoolsResponse(HttpResponse):
                     OUTPUT_FILE=output_path,
                     COL_TYPES=col_types)
 
-                set_phase_state(job[0], "done")
+                sgp_set_phase_state(job[0], "done")
 
 
 class LinkingView(APIView):
@@ -416,7 +422,7 @@ class LinkingView(APIView):
                 return jr_error
 
             # write to provenance record
-            append_linking_step(sgp, latest_dataset.pk, output_file.pk, "Direct API")
+            sgp_append_linking_step(sgp, latest_dataset.pk, output_file.pk, "Direct API")
 
         # assign jobs to response to handle
         # tool execution after returning the response to the client
@@ -430,7 +436,7 @@ class LinkingView(APIView):
         Create a new output FileField and return everything.
         """
         sgp = sgp_from_key(key)
-        latest_dataset: Dataset = get_latest_output_dataset(sgp)
+        latest_dataset: Dataset = sgp_get_output_file(sgp)
         output_file = create_filefield(
             self.suffix_filename_with_sgp(sgp, "output.csv"))
 
@@ -464,7 +470,7 @@ class FetchSubclassesView(APIView):
             find_subclasses(sgpc)
 
         all_subclasses['mappings'] = sgpc.subclassMappings
-        all_subclasses['history'] = get_history_sgpc_renamed(sgpc)
+        all_subclasses['history'] = sgpc_history_renamed(sgpc)
 
         response = JsonResponse(all_subclasses)
 
@@ -491,7 +497,7 @@ class FetchCpaView(APIView):
 
         all_mappings["mappings"] = sgpc.cpaMappings
         all_mappings["header"] = self.get_all_original_headers(sgpc)
-        all_mappings["history"] = get_history_sgpc_renamed(sgpc)
+        all_mappings["history"] = sgpc_history_renamed(sgpc)
 
         response = JsonResponse(all_mappings)
 
@@ -530,13 +536,14 @@ class EditMappingsView(APIView):
         if sgpc is False:
             return jr_error
 
+        # TODO: - apply this for all sgp also if edits is empty
         for sgp_number in data['edits']:
             sgp = sgp_from_key(sgp_number)
             if sgp is False:
                 return jr_error
 
-            apply_mapping_edits_to_sgp(sgp, data['edits'][sgp_number])
-            append_editMapping_step(sgp, data['edits'][sgp_number])
+            sgp_edit_mapping(sgp, data['edits'][sgp_number])
+            sgp_append_mapping_step(sgp, data['edits'][sgp_number])
 
         return Response()
 
@@ -553,7 +560,7 @@ class EditCpaView(APIView):
         if sgpc is False:
             return jr_error
 
-        edit_cpa_mappings(sgpc, data)
+        sgpc_edit_cpa(sgpc, data)
         return Response()
 
 
@@ -569,12 +576,12 @@ class EditSchemaView(APIView):
         if sgpc is False:
             return jr_error
 
-        edit_schema(sgpc, data)
+        sgpc_edit_schema(sgpc, data)
 
         return Response()
 
 
-class ResetCollectionView(APIView):
+class UndoSgpcView(APIView):
     def post(self, request):
         data = json.loads(request.body)["data"]
         step = int(data['step'])
@@ -585,51 +592,12 @@ class ResetCollectionView(APIView):
             return jr_error
         print("RESETVIEW, Step: ", step, " on sgpc: ", sgpc_pk)
 
-        undo_collection_till_phase(sgpc, step)
+        sgpc_undo_till_phase(sgpc, step)
 
         return JsonResponse({"phase": "linking"})
 
 
-class SGPCInfoView(APIView):
-    def get(self, request):
-        # tic = time.perf_counter()
-
-        response = JsonResponse({"tabledata": get_all_sgpc_info()})
-
-        # toc = time.perf_counter()
-        # print(f"get_all_sgpc_info() took {toc - tic:0.4f} seconds")
-        return response
-
-
-class FetchCollectionProvenance(APIView):
-    def get(self, request):
-        sgpc_pk = request.GET.get('sgpc_pk', default=None)
-        sgpc = sgpc_from_key(sgpc_pk)
-
-        if sgpc is False:
-            return jr_error
-
-        response_content = {"tabledata": {}, "sgpc_pk": sgpc_pk}
-
-        sgp: SGP
-        for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
-            response_content["tabledata"][i] = {}
-            response_content["tabledata"][i]["provdata"] = get_provrec(sgp.pk)
-            response_content["tabledata"][i]["sgp_pk"] = sgp.pk
-            response_content["tabledata"][i]["filename"] = sgp.original_filename
-
-        response = JsonResponse(response_content)
-
-        return response
-
-
-class FetchBioprojectNamesView(APIView):
-    def get(self, request):
-        response = JsonResponse({"projectNames": get_all_projects_name()})
-        return response
-
-
-class CopyCollectionView(APIView):
+class CopySgpcView(APIView):
     def post(self, request):
         """
         Copies a SGPC with all its SGPs. If reset_to_phase is
@@ -645,15 +613,15 @@ class CopyCollectionView(APIView):
         if sgpc is False:
             return jr_error
 
-        sgpc_copy = copy_collection(sgpc)
+        new_sgpc = sgpc_copy(sgpc)
 
         if reset_to_phase is not None:
-            undo_collection_till_phase(sgpc_copy, int(reset_to_phase))
+            sgpc_undo_till_phase(new_sgpc, int(reset_to_phase))
 
         return Response()
 
 
-class RerunCollectionView(APIView):
+class RerunView(APIView):
     def post(self, request):
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
         sgpc: SGPC = sgpc_from_key(sgpc_pk)
@@ -679,15 +647,15 @@ class RerunCollectionView(APIView):
         if (len(sgpc.cpaMappings) > 0):
             rerun_cpa = True
 
-        sgpc_copy = copy_collection(sgpc)
+        new_sgpc = sgpc_copy(sgpc)
 
         # undo collection up until init
-        undo_collection_till_phase(sgpc_copy, 1)
+        sgpc_undo_till_phase(new_sgpc, 1)
 
-        self.rerun_sgp(sgp_data, sgpc_copy)
+        self.rerun_sgp(sgp_data, new_sgpc)
 
         # rerun phases from sgpc provenance record (that includes applying user changes)
-        self.rerun_sgpc(sgpc_copy, old_sgpc_provrec, rerun_subclasses, rerun_cpa)
+        self.rerun_sgpc(new_sgpc, old_sgpc_provrec, rerun_subclasses, rerun_cpa)
 
         return Response()
 
@@ -705,25 +673,25 @@ class RerunCollectionView(APIView):
                     # do this later
                     pass
                 elif phase['type'] == 'linking':
-                    latest_dataset: Dataset = get_latest_output_dataset(new_sgp)
+                    latest_dataset: Dataset = sgp_get_output_file(new_sgp)
                     print("LATEST_DATASET: ", latest_dataset)
                     output_file = create_filefield(
                         self.suffix_filename_with_sgp(new_sgp, "output.csv"))
 
                     print("OUTPUT_FILE: ", output_file)
-                    append_linking_step(new_sgp, latest_dataset.pk, output_file.pk, "Direct API")
+                    sgp_append_linking_step(new_sgp, latest_dataset.pk, output_file.pk, "Direct API")
                     self.run_linking_tool(new_sgp, latest_dataset, output_file)
 
                 elif phase['type'] == 'editmapping':
                     if "edits" in phase:
-                        apply_mapping_edits_to_sgp(new_sgp, phase['edits'])
-                        append_editMapping_step(new_sgp, phase['edits'])
+                        sgp_edit_mapping(new_sgp, phase['edits'])
+                        sgp_append_mapping_step(new_sgp, phase['edits'])
                     else:
-                        append_editMapping_step(new_sgp, {})
+                        sgp_append_mapping_step(new_sgp, {})
                 elif phase['type'] == 'editcpa':
-                    append_editCpa_step(new_sgp)
+                    sgp_append_cpa_step(new_sgp)
                 elif phase['type'] == 'schemarefine':
-                    append_schemaRefine_step(new_sgp)
+                    sgp_append_schema_step(new_sgp)
 
     def rerun_sgpc(self, sgpc: SGPC, old_sgpc_provrec: dict, rerun_subclasses, rerun_cpa):
         if rerun_subclasses:
@@ -736,14 +704,14 @@ class RerunCollectionView(APIView):
         for key, phase in old_sgpc_provrec.items():
             if phase['type'] == 'editcpa':
                 if "edits" in phase:
-                    edit_cpa_mappings(sgpc, phase['edits'])
+                    sgpc_edit_cpa(sgpc, phase['edits'])
                 else:
-                    edit_cpa_mappings(sgpc, {'deleted': {}, 'added': {}})
+                    sgpc_edit_cpa(sgpc, {'deleted': {}, 'added': {}})
             elif phase['type'] == 'schemarefine':
                 if "edits" in phase:
-                    edit_schema(sgpc, phase['edits'])
+                    sgpc_edit_schema(sgpc, phase['edits'])
                 else:
-                    edit_schema(sgpc, {'deleted': {}, 'added': {}})
+                    sgpc_edit_schema(sgpc, {'deleted': {}, 'added': {}})
 
     def run_linking_tool(self, sgp, latest_dataset, output_file):
         # assign necessary information
@@ -755,7 +723,7 @@ class RerunCollectionView(APIView):
         # TODO:
         #   - own function, cased on method
         # print(f"Running Job with method: {method} for file: {input_file_path}.")
-        col_types = get_column_types(sgp)
+        col_types = sgp_get_col_types(sgp)
 
         # RUNS QUERY ONLY FOR String-type columns!!!
         wikitesttool.main(
@@ -763,7 +731,7 @@ class RerunCollectionView(APIView):
             OUTPUT_FILE=output_path,
             COL_TYPES=col_types)
 
-        set_phase_state(sgp, "done")
+        sgp_set_phase_state(sgp, "done")
 
     def suffix_filename_with_sgp(self, sgp, filename: str):
         """
@@ -773,7 +741,7 @@ class RerunCollectionView(APIView):
         return f"{sgp.pk}_{len(sgp.provenanceRecord)}_{filename}"
 
 
-class ChangeDatasetAndRerunView(APIView):
+class ChangeFileAndRerunView(APIView):
     # TODO: - check if new uploaded dataset has the same columns as original one
     def post(self, request):
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
@@ -782,8 +750,8 @@ class ChangeDatasetAndRerunView(APIView):
         if sgpc is False:
             return jr_error
 
-        new_sgpc = copy_collection(sgpc)
-        undo_collection_till_phase(new_sgpc, 1)
+        new_sgpc = sgpc_copy(sgpc)
+        sgpc_undo_till_phase(new_sgpc, 1)
 
         old_sgpc = SGPC.objects.get(pk=sgpc_pk)
 
@@ -799,7 +767,7 @@ class ChangeDatasetAndRerunView(APIView):
                         if new_sgp.id_in_collection == old_sgp.id_in_collection:
                             new_sgp.original_filename = file.name
                             print(str(old_sgp.pk), " ", sgp_pk)
-                            replace_source_dataset(new_sgp, new_dataset)
+                            sgp_replace_source_dataset(new_sgp, new_dataset)
 
         sgp_data = []
         old_sgp: SGP
@@ -821,8 +789,8 @@ class ChangeDatasetAndRerunView(APIView):
             if new_sgp.datasets_copied:
                 # COPY PROVREC
                 new_sgp.provenanceRecord = data['provrec']
-                replace_mapping_file_with_copy(new_sgp)
-                reset_sgp_until_linking(new_sgp)
+                sgp_replace_mapping_file_with_copy(new_sgp)
+                sgp_undo_till_linking(new_sgp)
                 continue
 
             for key, phase in data['provrec'].items():
@@ -834,10 +802,10 @@ class ChangeDatasetAndRerunView(APIView):
                     # do this later
                     pass
                 elif phase['type'] == 'linking':
-                    latest_dataset: Dataset = get_latest_output_dataset(new_sgp)
+                    latest_dataset: Dataset = sgp_get_output_file(new_sgp)
                     output_file = create_filefield(
                         self.suffix_filename_with_sgp(new_sgp, "output.csv"))
-                    append_linking_step(new_sgp, latest_dataset.pk, output_file.pk, "Direct API")
+                    sgp_append_linking_step(new_sgp, latest_dataset.pk, output_file.pk, "Direct API")
                     self.run_linking_tool(new_sgp, latest_dataset, output_file)
 
     def run_linking_tool(self, sgp, latest_dataset, output_file):
@@ -850,7 +818,7 @@ class ChangeDatasetAndRerunView(APIView):
         # TODO:
         #   - own function, cased on method
         # print(f"Running Job with method: {method} for file: {input_file_path}.")
-        col_types = get_column_types(sgp)
+        col_types = sgp_get_col_types(sgp)
 
         # RUNS QUERY ONLY FOR String-type columns!!!
         wikitesttool.main(
@@ -858,7 +826,7 @@ class ChangeDatasetAndRerunView(APIView):
             OUTPUT_FILE=output_path,
             COL_TYPES=col_types)
 
-        set_phase_state(sgp, "done")
+        sgp_set_phase_state(sgp, "done")
 
     def suffix_filename_with_sgp(self, sgp, filename: str):
         """
@@ -870,6 +838,9 @@ class ChangeDatasetAndRerunView(APIView):
 
 class DeleteDBView(APIView):
     def post(self, request):
+        for o in IknowEntity.objects.all():
+            o.delete()
+
         for d in Dataset.objects.all():
             if d.pk > 760:
                 d.delete()
@@ -945,6 +916,43 @@ def find_mappings(sgpc: SGPC):
     sgpc.save()
 
 
+def generate_missing_entities(sgp: SGP):
+    """
+    For a given sgp, reads mapping file and latest dataset.
+    Searches for IknowEntities with same value, or creates new
+    Entities if none found. Replaces NORESULT values in mapping
+    file, with EntityUri.
+    """
+
+    mapping_file: Dataset = sgp_get_mapping_file(sgp)
+    latest_dataset: Dataset = sgp_get_input_file(sgp)
+    mapping_df = pd.read_csv(mapping_file.file_field.path)
+    original_df = pd.read_csv(latest_dataset.file_field.path)
+
+    col_types = sgp_get_col_types(sgp)
+
+    for i, value in enumerate(mapping_df):
+        if col_types[i] == "String":
+            for j, cell in enumerate(mapping_df[value]):
+                if cell == "NORESULT":
+
+                    # https://docs.djangoproject.com/en/4.1/ref/models/querysets/#get-or-create
+                    result = IknowEntity.objects.get_or_create(label=original_df.iat[j, i])
+                    entity: IknowEntity = result[0]
+                    new = result[1]
+
+                    if new:
+                        entity.uri = f"{IKNOW_NAMESPACE}E{entity.pk}"
+                        entity.label = original_df.iat[j, i]
+                        entity.save()
+
+                    mapping_df.iat[j, i] = entity.uri
+
+    mapping_df.to_csv(mapping_file.file_field.path, index=False)
+
+    return Response()
+
+
 def get_next_unused_key(somedic: dict):
     for i in range(10000):
         if str(i) in somedic:
@@ -953,3 +961,48 @@ def get_next_unused_key(somedic: dict):
             return str(i)
 
     return False
+
+
+@api_view(['GET'])
+def get_sgpc_info(request):
+    """
+    Returns list with information about all sgpcs.
+    """
+    response = JsonResponse({"tabledata": sgpc_info()})
+
+    return response
+
+
+@api_view(['GET'])
+def get_sgpc_provenance(request):
+    """
+    Returns information about all phases in the provenance record
+    of all sgps in a sgpc.
+    """
+    sgpc_pk = request.GET.get('sgpc_pk', default=None)
+    sgpc = sgpc_from_key(sgpc_pk)
+
+    if sgpc is False:
+        return jr_error
+
+    response_content = {"tabledata": {}, "sgpc_pk": sgpc_pk}
+
+    sgp: SGP
+    for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+        response_content["tabledata"][i] = {}
+        response_content["tabledata"][i]["provdata"] = sgp_get_provrec(sgp.pk)
+        response_content["tabledata"][i]["sgp_pk"] = sgp.pk
+        response_content["tabledata"][i]["filename"] = sgp.original_filename
+
+    response = JsonResponse(response_content)
+
+    return response
+
+
+@api_view(['GET'])
+def get_bioproject_names(request):
+    """
+    Returns all disctinct bioproject names.
+    """
+    response = JsonResponse({"projectNames": BioProject.get_all_project_names()})
+    return response

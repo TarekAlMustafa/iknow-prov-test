@@ -28,6 +28,11 @@ class HeaderClass(models.Model):
     sub_category_uri = models.CharField(unique=True, max_length=4096)
 
 
+class IknowEntity(models.Model):
+    uri = models.CharField(max_length=10000, unique=True, null=True)
+    label = models.CharField(max_length=4096, unique=True)
+
+
 class QueryMetaData(models.Model):
     project_name = models.CharField(max_length=4096)
     column_name = models.CharField(max_length=4096)
@@ -91,3 +96,7 @@ def create_new_headerclass(data):
     header_class.sub_category_uri = data["newsuburi"]
 
     header_class.save()
+
+
+def get_entity_by_label():
+    pass

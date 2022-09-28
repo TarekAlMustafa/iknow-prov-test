@@ -14,7 +14,14 @@ class BioProject(models.Model):
     name = models.CharField(max_length=1023, unique=True, default='', blank=True, null=True)
 
     def get_all_project_names():
-        return BioProject.objects.values('name').distinct()
+        info = [['--select one--']]
+
+        distinct_names = BioProject.objects.values('name').distinct()
+
+        for proj_name in distinct_names:
+            info.append([proj_name['name']])
+
+        return info
 
     def name_exists(name: str):
         for n in BioProject.objects.values('name'):

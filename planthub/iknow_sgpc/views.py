@@ -5,26 +5,16 @@ from django.http import JsonResponse
 
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
-    append_editCpa_step,
-    append_schemaRefine_step,
-    get_header_mapping,
-    get_original_header,
-    is_in_progress,
-    replace_mapping_file_with_copy,
+    sgp_append_cpa_step,
+    sgp_append_schema_step,
+    sgp_in_progress,
+    sgp_replace_mapping_file_with_copy,
 )
 
 from .models import SGPC, BioProject
 
-# from .serializer import CreateCollectionSerializer
 
-# creates entry in SGPC
-# expects a dict in data with 'data' : {..} and optional subkeys:
-# bioprojectname, collectionname, description
-# everything else will be ignored or results in error message and nothing happening
-
-
-# TODO: - rewrite this with foreign key and or serializer!
-def createCollection(request):
+def sgpc_create(request):
     """
     Creates a new SGP instance connected to a given Bioproject.
     Bioproject can be selected or newly created.
@@ -78,67 +68,39 @@ def sgpc_from_key(key: str):
     return sgpc
 
 
-def get_all_sgpc_info():
+def sgpc_info():
     """
     Returns information about all sgpc in the database,
     for the client to display and choose from.
     """
+    # table header
     info = [['Collectionname', 'Bioprojectname', '# associated graphs']]
-    # test = {0:5, 1:3, 4:5}
+
     sgpc: SGPC
     for sgpc in SGPC.objects.all():
-        # len(sgpc.associated_sgprojects.all()) <-- this is extremely slow, (never use this if possible)
         info.append([sgpc.collectionname, sgpc.bioprojectname, sgpc.associated_sgprojects.all().count(), sgpc.pk])
-        # info.append([0, 0, 0])
-        # info.append([0, 0, len(sgpc.associated_sgprojects.all())])  # 0.7-1.4 s
-        # info.append([0, sgpc.bioprojectname, 0])    # 0.02-0.1 s
-        # info.append([sgpc.collectionname, 0, 0])    # 0.02-0.1 s
-        # info.append([0, 0, len(test)])
 
     return info
 
 
-def get_all_projects_name():
-    """
-    Returns information about all Bioprojects in the database,
-    for the client to display and choose from.
-    """
-
-    info = [['--select one--']]
-
-    for proj_name in BioProject.get_all_project_names():
-        info.append([proj_name['name']])
-
-    return info
-
-
-def is_in_progress_sgpc(sgpc: SGPC):
+def sgpc_in_progress(sgpc: SGPC):
     """
     Checks if tool is running for a given sgpc.
     Calls is_in_progress on each sgp.
     """
 
     for sgp in sgpc.associated_sgprojects.all():
-        if is_in_progress(sgp):
+        if sgp_in_progress(sgp):
             return True
 
     # no sgp is still in progress
     return False
 
 
-def get_all_header_mappings(sgpc: SGPC):
-    all_header_mappings = []
-
-    for sgp in sgpc.associated_sgprojects.all():
-        original_header = get_original_header(sgp)
-        header_mapping = get_header_mapping(sgp)
-        for i, entry in enumerate(original_header):
-            all_header_mappings.append([entry, header_mapping[i]])
-
-    return all_header_mappings
-
-
-def get_history_sgpc(sgpc: SGPC):
+def sgpc_history(sgpc: SGPC):
+    """
+    Returns history for a single sgpc.
+    """
     sgp0 = sgpc.associated_sgprojects.all()[0]
 
     helper = []
@@ -148,7 +110,11 @@ def get_history_sgpc(sgpc: SGPC):
     return helper
 
 
-def get_history_sgpc_renamed(sgpc: SGPC):
+def sgpc_history_renamed(sgpc: SGPC):
+    """
+    Returns renamed history for a single sgpc.
+    For display in frontend.
+    """
     sgp0 = sgpc.associated_sgprojects.all()[0]
 
     helper = []
@@ -174,7 +140,7 @@ def get_history_sgpc_renamed(sgpc: SGPC):
     return helper
 
 
-def undo_collection_till_phase(sgpc: SGPC, phase_number: int):
+def sgpc_undo_till_phase(sgpc: SGPC, phase_number: int):
     """
     Clears provenance Record of SGPC and all its SGPs until
     given phase_number.
@@ -226,7 +192,7 @@ def undo_collection_till_phase(sgpc: SGPC, phase_number: int):
     sgpc.save()
 
 
-def copy_collection(sgpc: SGPC):
+def sgpc_copy(sgpc: SGPC):
     """
     Copies a collection (and copies all its SGPs),
     replaces the mapping file and returns
@@ -255,7 +221,7 @@ def copy_collection(sgpc: SGPC):
         sgp.source_dataset.add(dataset)
 
         try:
-            replace_mapping_file_with_copy(sgp)
+            sgp_replace_mapping_file_with_copy(sgp)
         except ValueError:
             # TODO: - handle error
             continue
@@ -282,6 +248,10 @@ def copy_collection(sgpc: SGPC):
 
 
 def sgpc_append_editCpa_step(sgpc: SGPC, deletions: dict, additions: dict):
+    """
+    Appends information of user edits on the cpa-mappings,
+    to the provenance record of the sgpc.
+    """
     next_step = str(len(sgpc.collection_prov_rec))
     sgpc.collection_prov_rec[next_step] = {}
     sgpc.collection_prov_rec[next_step]["type"] = "editcpa"
@@ -291,7 +261,11 @@ def sgpc_append_editCpa_step(sgpc: SGPC, deletions: dict, additions: dict):
     sgpc.save()
 
 
-def sgpc_append_schemaRefine_step(sgpc: SGPC, deletions: dict, additions: dict):
+def sgpc_append_schema_step(sgpc: SGPC, deletions: dict, additions: dict):
+    """
+    Appends information of user edits on the schema (subclass-mappings),
+    to the provenance record of the sgpc.
+    """
     next_step = str(len(sgpc.collection_prov_rec))
     sgpc.collection_prov_rec[next_step] = {}
     sgpc.collection_prov_rec[next_step]["type"] = "schemarefine"
@@ -301,9 +275,12 @@ def sgpc_append_schemaRefine_step(sgpc: SGPC, deletions: dict, additions: dict):
     sgpc.save()
 
 
-def edit_cpa_mappings(sgpc: SGPC, edits: dict):
+def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
+    """
+    Applies user edits of cpa-mappings so the field
+    in the sgpc. Then calls sgpc_append_editCpa_step().
+    """
     mapping_copy = sgpc.cpaMappings
-    # header_mappings = get_all_header_mappings(sgpc)
 
     for deletion in edits['deleted']:
         for key in mapping_copy:
@@ -327,14 +304,17 @@ def edit_cpa_mappings(sgpc: SGPC, edits: dict):
     sgpc_append_editCpa_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
 
     for sgp in sgpc.associated_sgprojects.all():
-        append_editCpa_step(sgp)
+        sgp_append_cpa_step(sgp)
 
     sgpc.save()
 
 
-def edit_schema(sgpc: SGPC, edits: dict):
+def sgpc_edit_schema(sgpc: SGPC, edits: dict):
+    """
+    Applies user edits of schema (subclass-mappings) so the field
+    in the sgpc. Then calls sgpc_append_schema_step().
+    """
     schemaCopy = sgpc.subclassMappings
-    # print(mapping_copy)
 
     for deletion in edits['deleted']:
         for key, valueDic in schemaCopy.items():
@@ -346,10 +326,6 @@ def edit_schema(sgpc: SGPC, edits: dict):
 
     for key, value in edits['added'].items():
         next_key = get_next_unused_key(schemaCopy)
-        # print("NEXT KEY", next_key, " TYPE: ", type(next_key))
-        # print("TYPEADD: ", type(addition))
-        # print("ADD: ", addition)
-
         schemaCopy[next_key] = {}
         schemaCopy[next_key]['s'] = value['s']
         schemaCopy[next_key]['o'] = value['o']
@@ -357,10 +333,10 @@ def edit_schema(sgpc: SGPC, edits: dict):
         print("Added: ", schemaCopy[next_key])
 
     sgpc.subclassMappings = schemaCopy
-    sgpc_append_schemaRefine_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
+    sgpc_append_schema_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
 
     for sgp in sgpc.associated_sgprojects.all():
-        append_schemaRefine_step(sgp)
+        sgp_append_schema_step(sgp)
 
     sgpc.save()
 

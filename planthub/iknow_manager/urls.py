@@ -1,25 +1,25 @@
 from django.urls import path
 
 from .views import (
-    ChangeDatasetAndRerunView,
+    ChangeFileAndRerunView,
     CleaningView,
-    CopyCollectionView,
-    CreateCollectionView,
-    DatasetInit,
+    ColumntypesView,
+    CopySgpcView,
+    CreateSgpcView,
     DeleteDBView,
     EditCpaView,
     EditMappingsView,
     EditSchemaView,
-    FetchBioprojectNamesView,
-    FetchCollectionProvenance,
     FetchCpaView,
     FetchDataView,
     FetchSubclassesView,
     LinkingView,
-    RerunCollectionView,
-    ResetCollectionView,
-    SGPCInfoView,
-    UploadToCollectionView,
+    RerunView,
+    UndoSgpcView,
+    UploadToSgpcView,
+    get_bioproject_names,
+    get_sgpc_info,
+    get_sgpc_provenance,
 )
 
 urlpatterns = [
@@ -31,9 +31,9 @@ urlpatterns = [
     # path('create-sgproject', CreateProjectView.as_view()),
     # path('create-sgproject', ProjectView.as_view()),
 
-    path('create-collection', CreateCollectionView.as_view()),
+    path('create-collection', CreateSgpcView.as_view()),
 
-    path('upload-datasets-to-collection', UploadToCollectionView.as_view()),
+    path('upload-datasets-to-collection', UploadToSgpcView.as_view()),
 
     path('fetch-datasets-from-collection', FetchDataView.as_view()),
 
@@ -45,7 +45,7 @@ urlpatterns = [
 
     # on post: creates init step in sgproject and saves actions
     # [unique, parameterized]
-    path('datasets_init', DatasetInit.as_view()),
+    path('datasets_init', ColumntypesView.as_view()),
 
     # on get: not implemented yet (might be merged later)
     # on post: initiates cleaning on datasets, creates new dataset-versions
@@ -57,9 +57,9 @@ urlpatterns = [
     # at the moment [unique, parameterized]
     path('apply_linking', LinkingView.as_view()),
 
-    path('fetch-bioproject-names', FetchBioprojectNamesView.as_view()),
+    path('fetch-bioproject-names', get_bioproject_names, name="get_bioproject_names"),
 
-    path('all-sgpc-info', SGPCInfoView.as_view()),
+    path('all-sgpc-info', get_sgpc_info, name="get_sgpc_info"),
 
 
     # returns dataset data etc. for specific sgproject
@@ -81,15 +81,15 @@ urlpatterns = [
 
     path('editschema', EditSchemaView.as_view()),
 
-    path('fetch-collection-provenance', FetchCollectionProvenance.as_view()),
+    path('fetch-collection-provenance', get_sgpc_provenance, name="get_sgpc_provenance"),
 
-    path('resetcollectionto', ResetCollectionView.as_view()),
+    path('resetcollectionto', UndoSgpcView.as_view()),
 
-    path('copy-collection', CopyCollectionView.as_view()),
+    path('copy-collection', CopySgpcView.as_view()),
 
-    path('rerun-collection', RerunCollectionView.as_view()),
+    path('rerun-collection', RerunView.as_view()),
 
-    path('change-datasets-and-rerun', ChangeDatasetAndRerunView.as_view()),
+    path('change-datasets-and-rerun', ChangeFileAndRerunView.as_view()),
 
     path('delete-database', DeleteDBView.as_view()),
 ]
