@@ -70,8 +70,9 @@ pytest_3_10_coverage:
   artifacts:
     when: always
     reports:
+      junit: report.xml
       coverage_report:
         coverage_format: cobertura
-        path: cobertura.xml
+        path: coverage.xml
 
 
