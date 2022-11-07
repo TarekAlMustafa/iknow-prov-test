@@ -33,3 +33,4 @@ dash[testing]
 markupsafe == 2.0.1
 
 elasticsearch-dsl>=7.0.0
+plotly==5.8.2 # temporary until we can upgrade without errors 
