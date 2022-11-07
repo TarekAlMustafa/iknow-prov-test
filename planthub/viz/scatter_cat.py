@@ -156,7 +156,8 @@ app.layout = html.Div(children=[
     State('x-axis', 'value'),
 )
 def update_x_cols(name_of_data_frame, old_value):
-    """When the user chooses a new dataframe, this function updates the possible options and values for x and color-column
+    """When the user chooses a new dataframe, this function updates the possible options and values
+     for x and color-column
 
     :param name_of_data_frame:
     :return:
