@@ -1,5 +1,5 @@
 import json
-
+import requests
 import pandas as pd
 # from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
@@ -11,6 +11,8 @@ from rest_framework.response import Response
 # from django.db import models
 # from django.shortcuts import render
 from rest_framework.views import APIView
+from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib.namespace import OWL, RDF, RDFS
 
 from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
@@ -1006,3 +1008,390 @@ def get_bioproject_names(request):
     """
     response = JsonResponse({"projectNames": BioProject.get_all_project_names()})
     return response
+
+
+class GenerateTTL(APIView):
+    # defining namespace variables
+    WIKI = Namespace("https://www.wikidata.org/wiki/")
+    IKNOW = Namespace("https://planthub.idiv.de/iknow/wiki/")
+    IKNOW_RO = Namespace("https://planthub.idiv.de/iknow/RO")
+
+    # creates the graph object which holds all triples as nodes and edges
+    g = Graph()
+
+    # binding a namespace to the graph
+    g.bind("wiki", WIKI)
+    g.bind("iknow", IKNOW)
+    g.bind("owl", OWL)
+
+    # such an index can be used to name URIS/graphnames/etc. accordingly
+    row_observation_index = 0
+
+    def add_rowobservation_class(self):
+        """
+        e.g.
+        [<https://planthub.idiv.de/iknow/RO>] [a] [owl:Class] ;
+                    [rdfs:label] ["Virtual-Row-Observation"] .
+        """
+        self.g.add((
+            URIRef(f"{self.IKNOW_RO}"),
+            RDF.type,
+            OWL.Class
+        ))
+
+        self.g.add((
+            URIRef(f"{self.IKNOW_RO}"),
+            RDFS.label,
+            Literal("Virtual Row Observation")
+        ))
+
+    def get_entites_uri(self, label=""):
+        # print("label", label)
+        # wiki url
+        wiki_url = "https://www.wikidata.org/wiki/"
+        # iknow url
+        iknow_url = "https://planthub.idiv.de/iknow/wiki/"
+
+        wiki_entites_query_uri = "https://en.wikipedia.org/w/api.php?action=query&prop=pageprops&format=json&titles="
+        label_uri = wiki_entites_query_uri + label
+        label_data = requests.get(label_uri)
+        label_data_response = label_data.json()
+        for page in label_data_response["query"]["pages"].values():
+            if ("pageprops" in page and "wikibase_item" in page["pageprops"]):
+                wikibase_item = page["pageprops"]["wikibase_item"]
+                url = wiki_url + wikibase_item
+                return url
+            else:
+                return iknow_url+"C50"
+
+    def add_class(self, uri, label=""):
+        """
+        e.g.
+        [wiki:Q30513971] [a] [owl:Class] ;
+                    [rdfs:label] ["flower_beg"] .
+        """
+        subject = URIRef(uri)
+        self.g.add((subject, RDF.type, OWL.Class))
+        if label != "":
+            self.g.add((subject, RDFS.label, Literal(label)))
+
+    def add_entities_string(self, column, mapping_column, header_class):
+        """
+        e.g.
+        [<http://www.wikidata.org/entity/Q158008>] [instance_of] [wiki:Q7432] ;
+                    [rdfs:label] ["Achillea-millefoluim"]
+        """
+        for i in range(len(column)):
+            # e.g. [(URI of) Achillea] [is_type] [(URI of) Species]
+            self.g.add((
+                URIRef(mapping_column[i]), RDF.type, URIRef(header_class)
+            ))
+
+            # e.g. [(URI of) Achillea] [has_label] [Achillea Millefolium]
+            self.g.add((
+                URIRef(mapping_column[i]), RDFS.label, Literal(column[i])
+            ))
+
+    def add_row_obseration(self, original_row, cea_row, col_types, row_obs_properties):
+        """
+        e.g.
+        [row-observation] [iknow:P0] [<http://www.wikidata.org/entity/Q236049>];
+                    [iknow:P1] [<http://www.wikidata.org/entity/Q158008>] ;
+                    [iknow:P2] ["909"] ;
+                    [iknow:P3] ["2020"] ;
+                    [iknow:P4] ["79"] .
+        """
+        global row_observation_index
+        for i, value in enumerate(original_row):
+            # print(col_types[i])
+            self.g.add((
+                URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
+                RDF.type,
+                URIRef(f"{self.IKNOW_RO}")
+            ))
+
+            if col_types[i] == "String":
+                # print("Adding Cell String")
+                # print(f"{value} {cea_row[i]}")
+                self.g.add((
+                    URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
+                    URIRef(row_obs_properties[i]),
+                    URIRef(cea_row[i])
+                ))
+            else:
+                # print("Adding Cell NON-String")
+                self.g.add((
+                    URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
+                    URIRef(row_obs_properties[i]),
+                    Literal(value)
+                ))
+
+    def add_SubClass_Mappings(self, subclassMappings):
+        for i, subClassMap in subclassMappings.items():
+            self.g.add((
+                URIRef(subClassMap['o']),
+                RDFS.subClassOf,
+                URIRef(subClassMap['s']),
+            ))
+
+    def add_properties(self, uri, oType, label=""):
+        """
+        e.g.
+        [wiki:Q30513971] [a] OWL.ObjectProperty;
+                    [rdfs:label] ["flower_beg"] .
+        """
+        subject = URIRef(uri)
+        if (oType == "String"):
+            self.g.add((subject, RDF.type, OWL.ObjectProperty))
+        elif (oType == "Integer"):
+            self.g.add((subject, RDF.type, OWL.DatatypeProperty))
+        if label != "":
+            self.g.add((subject, RDFS.label, Literal(label)))
+        return None
+
+    def main(self, sgpc, ro_startingindex=0, property_stratingIndex=10):
+
+        # TODO:
+        #   - replace row_observation_index with
+        #   [ID of the SGP + '-' + local row observation index] to make it unique
+
+        global row_observation_index
+        row_observation_index = ro_startingindex
+
+        # store header maps
+        header_mapping = []
+        row_obs_properties = []
+
+        # header_map = ["https://www.wikidata.org/wiki/Q167346",
+        #               "https://www.wikidata.org/wiki/Q7432",
+        #               "https://planthub.idiv.de/iknow/wiki/C99",
+        #               "https://www.wikidata.org/wiki/Q577",
+        #               "https://www.wikidata.org/wiki/Q30513971"]
+
+        # row_obs_properties = [
+        #     "https://planthub.idiv.de/iknow/wiki/P0",
+        #     "https://planthub.idiv.de/iknow/wiki/P1",
+        #     "https://planthub.idiv.de/iknow/wiki/P2",
+        #     "https://planthub.idiv.de/iknow/wiki/P3",
+        #     "https://planthub.idiv.de/iknow/wiki/P4",
+        # ]
+
+        sgps = sgpc.associated_sgprojects.all()
+        for sgp in sgps:
+            generate_missing_entities(sgp)
+            original_file_path = sgp_get_input_file(sgp)
+            cea_file_path = sgp_get_mapping_file(sgp)
+            col_types = sgp_get_col_types(sgp)
+
+            original_df = pd.read_csv(original_file_path.file_field.path)
+            cea_df = pd.read_csv(cea_file_path.file_field.path)
+
+            self.add_rowobservation_class()
+
+            for i, mapping in sgp.provenanceRecord["0"]["selection"]["mapping"].items():
+                header_mapping.append(mapping)
+
+            header_labels = list(original_df.columns)
+            for i, mapping in enumerate(header_mapping):
+                self.add_class(mapping, label=header_labels[i])
+
+            # dd properties
+            for i in range(len(original_df.columns)):
+                col = original_df.iloc[:, i]
+                mapping_col = cea_df.iloc[:, i]
+
+                if col_types[i] == "String":
+                    self.add_entities_string(col, mapping_col, header_mapping[i])
+                else:
+                    # TODO: - implement according to RDF Structure
+                    pass
+
+            self.add_SubClass_Mappings(sgpc.subclassMappings)
+
+            # add properties
+            for mapping in sgpc.cpaMappings.values():
+                print("maping", mapping)
+                oIndex_from_original_columns = original_df.columns.tolist().index(mapping[5])
+                typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_from_original_columns)]
+                self.add_properties(mapping[2], typeof_oIndex, mapping[3])
+
+        # for i in range(len(original_df)):
+        #     self.add_row_obseration(original_df.iloc[i], cea_df.iloc[i],
+        #                             col_types, row_obs_properties)
+        #     row_observation_index += 1
+
+        # for i, row in enumerate(original_df.iterrows()):
+        #     print(type(row))
+        #     add_row_obseration(row, cea_df.iloc[i], col_types)
+
+        # this is wikidata suclass URI, but we use rdfs.subclassof
+        # URIRef("https://www.wikidata.org/wiki/Property:P279")
+
+        # (in general, more specific at the bottom)
+        # TODO: - for any other content or triple that needs to be in the graph
+        #       - feed this information to the script, and generate triples with
+        #       - g.add((s,p,o))
+
+        # HARDCODED (these will just be read
+        # from the database and become an input here)
+        # g.add((
+        #     URIRef("https://www.wikidata.org/wiki/Q167346"),
+        #     RDFS.subClassOf,
+        #     URIRef("http://www.wikidata.org/entity/Q22652")
+        # ))
+
+        # g.add((
+        #     URIRef("http://www.wikidata.org/entity/Q22652"),
+        #     RDFS.label,
+        #     Literal("green space")
+        # ))
+
+        # g.add((
+        #     URIRef("http://www.wikidata.org/entity/Q22652"),
+        #     RDF.type,
+        #     OWL.Class
+        # ))
+
+        # g.add((
+        #     URIRef("https://www.wikidata.org/wiki/Q7432"),
+        #     URIRef(f"{IKNOW}P33"),
+        #     URIRef("https://www.wikidata.org/wiki/Q167346")
+        # ))
+
+        # g.add((
+        #     URIRef(f"{IKNOW}P33"),
+        #     RDFS.label,
+        #     Literal("is_monitored_in")
+        # ))
+
+        # g.add((
+        #     URIRef(f"{IKNOW}P33"),
+        #     RDF.type,
+        #     OWL.ObjectProperty
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P0"),
+        #     RDF.type,
+        #     OWL.ObjectProperty
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P1"),
+        #     RDF.type,
+        #     OWL.ObjectProperty
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P2"),
+        #     RDF.type,
+        #     OWL.DatatypeProperty
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P3"),
+        #     RDF.type,
+        #     OWL.DatatypeProperty
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P4"),
+        #     RDF.type,
+        #     OWL.DatatypeProperty
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P0"),
+        #     RDFS.label,
+        #     Literal("has_Garden")
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P1"),
+        #     RDFS.label,
+        #     Literal("has_Species")
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P2"),
+        #     RDFS.label,
+        #     Literal("has_AccSpeciesID")
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P3"),
+        #     RDFS.label,
+        #     Literal("has_year")
+        # ))
+
+        # g.add((
+        #     URIRef("https://planthub.idiv.de/iknow/wiki/P4"),
+        #     RDFS.label,
+        #     Literal("has_flower_beg")
+        # ))
+
+        # this generates rdf from the graph g in a specific format
+        # g.serialize(format="ttl")
+
+        # print(g.serialize(format="ttl"))
+
+        # generate and write to file
+        # self.g.serialize(destination="test_result.ttl", format="ttl")
+        return HttpResponse(self.g.serialize(format="ttl"), content_type='application/x-turtle')
+
+    # Test run
+    # TODO: - replace with actual function call from backend
+    #       - load the hardcoded parts, CPA, CTA, CEA from backend
+    #       - create unique entries in the database for newly created uris
+    #         (this is achieved relatively easy with the django get_or_create function)
+    #         https://docs.djangoproject.com/en/4.1/ref/models/querysets/#get-or-create
+    #         which is already used in some places of the backend
+
+# https://planthub.idiv.de/iknow/wiki/ - namespace
+# https://planthub.idiv.de/iknow/wiki/C1 - classes
+# https://planthub.idiv.de/iknow/wiki/P1 - property
+# https://planthub.idiv.de/iknow/wiki/E1 - entitiy
+
+    def get(self, request):
+
+        # get parameters from request
+        sgpc_pk = request.GET.get('sgpc_pk', default=None)
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+            # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
+            #                      ["String", "String", "String", "Integer", "Integer"],
+            #                      header_mapping, row_obs_properties)
+
+        response = self.main(sgpc)
+
+        response['Content-Disposition'] = 'attachment; filename="results.ttl"'
+        return response
+
+
+class TTL_to_blazegraph(APIView):
+    def get(self, request):
+        # get parameters from request
+        sgpc_pk = request.GET.get('sgpc_pk', default=None)
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        project_name = "sgpc_" + str(sgpc.pk) + "_" + sgpc.bioprojectname
+        project_named_url = "https://planthub.idiv.de/iknow/" + project_name + ".org"
+        url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + project_named_url
+        headers = {'Content-Type': 'application/x-turtle'}
+        generateTTL = GenerateTTL()
+
+        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
+        #                      ["String", "String", "String", "Integer", "Integer"],
+        #                      header_mapping, row_obs_properties)
+
+        response = generateTTL.main(sgpc)
+
+        requests.post(url, data=response, headers=headers)
+
+        return Response()

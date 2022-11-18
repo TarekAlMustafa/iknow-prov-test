@@ -20,6 +20,8 @@ from .views import (
     get_bioproject_names,
     get_sgpc_info,
     get_sgpc_provenance,
+    GenerateTTL,
+    TTL_to_blazegraph
 )
 
 urlpatterns = [
@@ -92,4 +94,10 @@ urlpatterns = [
     path('change-datasets-and-rerun', ChangeFileAndRerunView.as_view()),
 
     path('delete-database', DeleteDBView.as_view()),
+
+    path('generate-ttl', GenerateTTL.as_view()),
+
+    path('ttl-to-blazegraph', TTL_to_blazegraph.as_view()),
+
+
 ]
