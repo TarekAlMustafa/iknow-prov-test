@@ -1016,36 +1016,28 @@ class GenerateTTL(APIView):
     IKNOW = Namespace("https://planthub.idiv.de/iknow/wiki/")
     IKNOW_RO = Namespace("https://planthub.idiv.de/iknow/RO")
 
-    # creates the graph object which holds all triples as nodes and edges
-    g = Graph()
-
-    # binding a namespace to the graph
-    g.bind("wiki", WIKI)
-    g.bind("iknow", IKNOW)
-    g.bind("owl", OWL)
-
     # such an index can be used to name URIS/graphnames/etc. accordingly
     row_observation_index = 0
 
-    def add_rowobservation_class(self):
+    def add_rowobservation_class(self, g):
         """
         e.g.
         [<https://planthub.idiv.de/iknow/RO>] [a] [owl:Class] ;
                     [rdfs:label] ["Virtual-Row-Observation"] .
         """
-        self.g.add((
+        g.add((
             URIRef(f"{self.IKNOW_RO}"),
             RDF.type,
             OWL.Class
         ))
 
-        self.g.add((
+        g.add((
             URIRef(f"{self.IKNOW_RO}"),
             RDFS.label,
             Literal("Virtual Row Observation")
         ))
 
-    def get_entites_uri(self, label=""):
+    def get_entites_uri(self, g, label=""):
         # print("label", label)
         # wiki url
         wiki_url = "https://www.wikidata.org/wiki/"
@@ -1064,18 +1056,20 @@ class GenerateTTL(APIView):
             else:
                 return iknow_url+"C50"
 
-    def add_class(self, uri, label=""):
+    def add_class(self, g, sgpcID, uri, label=""):
         """
         e.g.
         [wiki:Q30513971] [a] [owl:Class] ;
                     [rdfs:label] ["flower_beg"] .
         """
         subject = URIRef(uri)
-        self.g.add((subject, RDF.type, OWL.Class))
+        g.add((subject, RDF.type, OWL.Class))
         if label != "":
-            self.g.add((subject, RDFS.label, Literal(label)))
+            g.add((subject, RDFS.label, Literal(label)))
 
-    def add_entities_string(self, column, mapping_column, header_class):
+        g.add((subject, RDFS.seeAlso, Literal("sgpc_"+sgpcID)))
+
+    def add_entities_string(self, g, column, mapping_column, header_class):
         """
         e.g.
         [<http://www.wikidata.org/entity/Q158008>] [instance_of] [wiki:Q7432] ;
@@ -1083,16 +1077,16 @@ class GenerateTTL(APIView):
         """
         for i in range(len(column)):
             # e.g. [(URI of) Achillea] [is_type] [(URI of) Species]
-            self.g.add((
+            g.add((
                 URIRef(mapping_column[i]), RDF.type, URIRef(header_class)
             ))
 
             # e.g. [(URI of) Achillea] [has_label] [Achillea Millefolium]
-            self.g.add((
+            g.add((
                 URIRef(mapping_column[i]), RDFS.label, Literal(column[i])
             ))
 
-    def add_row_obseration(self, original_row, cea_row, col_types, row_obs_properties):
+    def add_row_obseration(self, g, original_row, cea_row, col_types, row_obs_properties):
         """
         e.g.
         [row-observation] [iknow:P0] [<http://www.wikidata.org/entity/Q236049>];
@@ -1104,7 +1098,7 @@ class GenerateTTL(APIView):
         global row_observation_index
         for i, value in enumerate(original_row):
             # print(col_types[i])
-            self.g.add((
+            g.add((
                 URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
                 RDF.type,
                 URIRef(f"{self.IKNOW_RO}")
@@ -1113,28 +1107,30 @@ class GenerateTTL(APIView):
             if col_types[i] == "String":
                 # print("Adding Cell String")
                 # print(f"{value} {cea_row[i]}")
-                self.g.add((
+                g.add((
                     URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
                     URIRef(row_obs_properties[i]),
                     URIRef(cea_row[i])
                 ))
             else:
                 # print("Adding Cell NON-String")
-                self.g.add((
+                g.add((
                     URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
                     URIRef(row_obs_properties[i]),
                     Literal(value)
                 ))
 
-    def add_SubClass_Mappings(self, subclassMappings):
+    def add_SubClass_Mappings(self, g, subclassMappings):
         for i, subClassMap in subclassMappings.items():
-            self.g.add((
-                URIRef(subClassMap['o']),
-                RDFS.subClassOf,
+            print("Each subClassMap", subClassMap)
+            g.add((
                 URIRef(subClassMap['s']),
+                RDFS.subClassOf,
+                URIRef(subClassMap['o']),
             ))
 
-    def add_properties(self, uri, oType, label=""):
+    def add_properties(self, g, sgpcID, uri, oType, label=""):
+        print("sgpcID", sgpcID)
         """
         e.g.
         [wiki:Q30513971] [a] OWL.ObjectProperty;
@@ -1142,14 +1138,15 @@ class GenerateTTL(APIView):
         """
         subject = URIRef(uri)
         if (oType == "String"):
-            self.g.add((subject, RDF.type, OWL.ObjectProperty))
+            g.add((subject, RDF.type, OWL.ObjectProperty))
         elif (oType == "Integer"):
-            self.g.add((subject, RDF.type, OWL.DatatypeProperty))
+            g.add((subject, RDF.type, OWL.DatatypeProperty))
         if label != "":
-            self.g.add((subject, RDFS.label, Literal(label)))
-        return None
+            g.add((subject, RDFS.label, Literal(label)))
 
-    def main(self, sgpc, ro_startingindex=0, property_stratingIndex=10):
+        g.add((subject, RDFS.seeAlso, Literal("sgpc_"+sgpcID)))
+
+    def main(self, g, sgpc_pk,  ro_startingindex=0, property_stratingIndex=10):
 
         # TODO:
         #   - replace row_observation_index with
@@ -1176,6 +1173,7 @@ class GenerateTTL(APIView):
         #     "https://planthub.idiv.de/iknow/wiki/P4",
         # ]
 
+        sgpc = sgpc_from_key(sgpc_pk)
         sgps = sgpc.associated_sgprojects.all()
         for sgp in sgps:
             generate_missing_entities(sgp)
@@ -1183,17 +1181,21 @@ class GenerateTTL(APIView):
             cea_file_path = sgp_get_mapping_file(sgp)
             col_types = sgp_get_col_types(sgp)
 
+            print("original_file_path", original_file_path)
+            print("cea_file_path", cea_file_path)
+            print("col_types", col_types)
+
             original_df = pd.read_csv(original_file_path.file_field.path)
             cea_df = pd.read_csv(cea_file_path.file_field.path)
 
-            self.add_rowobservation_class()
+            self.add_rowobservation_class(g)
 
             for i, mapping in sgp.provenanceRecord["0"]["selection"]["mapping"].items():
                 header_mapping.append(mapping)
 
             header_labels = list(original_df.columns)
             for i, mapping in enumerate(header_mapping):
-                self.add_class(mapping, label=header_labels[i])
+                self.add_class(g, sgpc_pk, mapping, label=header_labels[i])
 
             # dd properties
             for i in range(len(original_df.columns)):
@@ -1201,19 +1203,19 @@ class GenerateTTL(APIView):
                 mapping_col = cea_df.iloc[:, i]
 
                 if col_types[i] == "String":
-                    self.add_entities_string(col, mapping_col, header_mapping[i])
+                    self.add_entities_string(g, col, mapping_col, header_mapping[i])
                 else:
                     # TODO: - implement according to RDF Structure
                     pass
 
-            self.add_SubClass_Mappings(sgpc.subclassMappings)
+            self.add_SubClass_Mappings(g, sgpc.subclassMappings)
 
             # add properties
             for mapping in sgpc.cpaMappings.values():
                 print("maping", mapping)
                 oIndex_from_original_columns = original_df.columns.tolist().index(mapping[5])
                 typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_from_original_columns)]
-                self.add_properties(mapping[2], typeof_oIndex, mapping[3])
+                self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])
 
         # for i in range(len(original_df)):
         #     self.add_row_obseration(original_df.iloc[i], cea_df.iloc[i],
@@ -1336,8 +1338,8 @@ class GenerateTTL(APIView):
         # print(g.serialize(format="ttl"))
 
         # generate and write to file
-        # self.g.serialize(destination="test_result.ttl", format="ttl")
-        return HttpResponse(self.g.serialize(format="ttl"), content_type='application/x-turtle')
+        # g.serialize(destination="test_result.ttl", format="ttl")
+        return HttpResponse(g.serialize(format="ttl"), content_type='application/x-turtle')
 
     # Test run
     # TODO: - replace with actual function call from backend
@@ -1354,9 +1356,22 @@ class GenerateTTL(APIView):
 
     def get(self, request):
 
+        # creates the graph object which holds all triples as nodes and edges
+        g = Graph()
+
+        # binding a namespace to the graph
+        g.bind("wiki", self.WIKI)
+        g.bind("iknow", self.IKNOW)
+        g.bind("owl", OWL)
+
         # get parameters from request
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
         sgpc = sgpc_from_key(sgpc_pk)
+
+        print("sgpc_pk", sgpc_pk)
+        sgps = sgpc.associated_sgprojects.all()
+        for sgp in sgps:
+            print(sgp)
 
         if sgpc is False:
             return jr_error
@@ -1365,7 +1380,7 @@ class GenerateTTL(APIView):
             #                      ["String", "String", "String", "Integer", "Integer"],
             #                      header_mapping, row_obs_properties)
 
-        response = self.main(sgpc)
+        response = self.main(g, sgpc_pk)
 
         response['Content-Disposition'] = 'attachment; filename="results.ttl"'
         return response
@@ -1390,8 +1405,15 @@ class TTL_to_blazegraph(APIView):
         #                      ["String", "String", "String", "Integer", "Integer"],
         #                      header_mapping, row_obs_properties)
 
-        response = generateTTL.main(sgpc)
+        response = generateTTL.main(sgpc_pk)
 
         requests.post(url, data=response, headers=headers)
 
         return Response()
+
+
+# Provenance retrieval pages
+# Assign a url for new properties
+# Assign a url for new class on schemarefinement
+# delete duplicate on schemarefinement
+# csv with , and ; or tell the separate
