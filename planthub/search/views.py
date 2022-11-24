@@ -3,49 +3,45 @@ from elasticsearch_dsl import Search
 from elasticsearch_dsl.query import MultiMatch
 from rest_framework.views import APIView
 
-from .create_index import PlantHubSpeciesIndex, PlantHubVariableIndex
-from .models import PlantHubSearch
+from .models import PlantHubSearch, PlantHubSpeciesIndex, PlantHubVariableIndex
+
+# Server: config via docker compose
+# Local temp: docker run -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node"
+#                       docker.elastic.co/elasticsearch/elasticsearch:7.5.2
 
 
-# Create your views here.
 class Elasticsearch(APIView):
-    def get(self, request):
+    @staticmethod
+    def get(request):
 
-        filter = {}
-        filter['genus'] = request.query_params.get("genus")
-        filter['family'] = request.query_params.get("family")
-        filter['text'] = request.query_params.get("search_term")
-        filter['order'] = request.query_params.get("order")
-        filter['superorder'] = request.query_params.get("superorder")
-        filter['subclass'] = request.query_params.get("subclass")
-        filter['class1'] = request.query_params.get("class1")
-        filter['species'] = request.query_params.get("species")
-        filter['subspecies'] = request.query_params.get("subspecies")
-        filter['variable'] = request.query_params.get("variable")
-        # filter['domain'] =  request.query_params.get("domain")
-        print(filter)
-        #   print(search_term)
-        ws = PlantHubSearch(filter)
-        count = ws.count()  # Total count of result)
-        response = ws[0].execute()  # default size is 10 -> set size to total count
+        filter_terms = {}
+        filter_terms['genus'] = request.query_params.get("genus")
+        filter_terms['family'] = request.query_params.get("family")
+        filter_terms['text'] = request.query_params.get("search_term")
+        filter_terms['order'] = request.query_params.get("order")
+        filter_terms['superorder'] = request.query_params.get("superorder")
+        filter_terms['subclass'] = request.query_params.get("subclass")
+        filter_terms['class1'] = request.query_params.get("class1")
+        filter_terms['species'] = request.query_params.get("species")
+        filter_terms['subspecies'] = request.query_params.get("subspecies")
+        filter_terms['variable'] = request.query_params.get("variable")
 
-        # print response.__dict__
+        print(filter_terms)
+
+        ws = PlantHubSearch(filter_terms)
+        # count = ws.count()  # Total count of result -> response = ws[0:count].execute() return all hits
+        response = ws[0].execute()  # default size is 10 -> set size 0 to return only facets, but not hits
+
+        # todo add observation count to response
+        # print("aggreagtion", response.aggregations.Observation_count_by_dataset.__dict__)
+        # print("aggreagtion",
+        # response.aggregations.Observation_count_by_variable.Observation_count_by_variable2.__dict__)
 
         finalJSON = {'hits': [], 'facets': []}
 
         hits = []
         facets = dict()
         list_order = dict()
-
-        # for facet in response.facets:
-        #     print facet
-        #     for (facet, count, selected) in response.facets[facet]:
-        #         print(facet, ' (SELECTED):' if selected else ':', count)
-
-        # switch off the get all hits
-        for hit in response:
-            if hit.meta.index == "planthub_datasets_index":
-                hits.append({'score': round(hit.meta.score, 3), 'title': hit.title, 'genus': hit.genus})
 
         list_order['title'] = 1
         list_order["species"] = 2
@@ -60,45 +56,17 @@ class Elasticsearch(APIView):
         list_order["variable_type"] = 6
 
         facets_ordered = []
-        print(response.facets.__dict__)
+
         for facet in response.facets:
             for (facet_, count, selected) in response.facets[facet]:
-                if len(facet_) > 0:
+                # print(facet_)
+                if len(str(facet_)) > 0:
                     if facet not in facets:
                         facets[facet] = []
-                        genus = ""
-                        if selected:
-                            for hit in response:
-                                if facet in hit:
-                                    # print(hit[facet])
-                                    # print(hit[facet])
-                                    # print(facet)
-                                    # print(facet_)
-                                    # print(x)
-                                    # found = [x for x in hit[facet] if x == facet_]
-                                    # print(found)
-                                    if (hit[facet][0]['genus']):
-                                        genus = hit[facet][0]['genus']
-                        facets[facet] = [{'name': facet_, 'count': count, 'genus': genus}]
+                        facets[facet] = [{'name': facet_, 'count': count}]
                         facets_ordered.append({'name': facet, 'order': list_order[facet]})
                     else:
-                        genus = ""
-                        if selected:
-                            for hit in response:
-                                #  if facet in ["genus", "family"]:
-                                if facet in hit:
-                                    # print(hit[facet])
-                                    # print(facet)
-                                    # print(facet_)
-                                    # print(x)
-                                    # found = [x for x in hit[facet] if x == facet_]
-                                    # print(found)
-                                    # if found:
-                                    # count_values = count_values + found[0]['sum']
-
-                                    if (hit[facet][0]['genus']):
-                                        genus = hit[facet][0]['genus']
-                        facets[facet].append({'name': facet_, 'count': count, 'genus': genus})
+                        facets[facet].append({'name': facet_, 'count': count})
 
         finalJSON['hits'] = hits
         finalJSON['facets'] = facets
@@ -205,7 +173,53 @@ class ElasticsearchMatch(APIView):
             print(hit.__dict__)
             if hit.meta.index == "planthub_variables_index":
                 hits.append({'score': round(hit.meta.score, 3),
-                             'name': hit.variable_name, 'cat': "variable", 'id': ""})
+                             'name': hit.variable_name, 'cat': "variable", 'id': hit.variable_name.replace(" ", "_")})
 
         finalJSON = hits
         return JsonResponse(finalJSON, safe=False)
+
+
+class ElasticsearchItem(APIView):
+    def get(self, request):
+
+        # Example: http://127.0.0.1:8000/search/index_item?species_index_id=Paeonia
+        finalJSON = {'error': "not correct parameter given"}
+
+        if request.query_params.get("species_index_id"):
+            species_index_id = request.query_params.get("species_index_id")
+            item = PlantHubSpeciesIndex.get(id=species_index_id, ignore=404)
+            if item:
+                translation = []
+                for value in item.translation:
+                    translation.append({'name': value.name, 'lang': value.lang})
+
+                finalJSON = {'index_id': species_index_id,
+                             'data': {'taxon_name': item.taxon_name,
+                                      'taxon_rank': item.taxon_rank, 'translation': translation}}
+                return JsonResponse(finalJSON, safe=False)
+            else:
+                return JsonResponse({'index_id': species_index_id, 'data': 'no found'},
+                                    safe=False, status=404)  # not found
+
+        # Example: http://127.0.0.1:8000/search/index_item?variable_index_id=Year
+        # todo Adjust after Variable index change
+        if request.query_params.get("variable_index_id"):
+            variable_index_id = request.query_params.get("variable_index_id")
+            item = PlantHubVariableIndex.get(id=variable_index_id, ignore=404)
+            if item:
+                translation = []
+                for value in item.translation:
+                    translation.append({'name': value.name, 'lang': value.lang})
+
+                finalJSON = {'index_id': variable_index_id,
+                             'data': {'variable_name': item.variable_name,
+                                      'variable_description': item.variable_description,
+                                      'variable_type': item.variable_type,
+                                      'variable_subtype': item.variable_subtype,
+                                      'translation': translation}}
+                return JsonResponse(finalJSON, safe=False)
+            else:
+                return JsonResponse({'index_id': variable_index_id, 'data': 'no found'},
+                                    safe=False, status=404)  # not found
+
+        return JsonResponse(finalJSON, safe=False, status=412)  # Precondition failed

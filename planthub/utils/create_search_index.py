@@ -14,6 +14,7 @@ from elasticsearch_dsl import (
     connections,
 )
 
+#
 # es = Elasticsearch()
 connections.create_connection(hosts=['localhost:9200'], timeout=20)
 
@@ -21,12 +22,14 @@ connections.create_connection(hosts=['localhost:9200'], timeout=20)
 
 # data_path = str(settings.APPS_DIR) + "/search/"
 
+print("Search loaded sadadssa")
+
 data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data')
 
 datasets = []
 datasets.append({'file_name': 'PhenObs_2022-02-28 (1).csv', 'dataset_title': 'PhenObs'})
-datasets.append({'file_name': 'TRY_2022-05-09', 'dataset_title': 'TRY'})
-datasets.append({'file_name': 'sPlot_2022-02-28', 'dataset_title': 'sPlot'})
+#datasets.append({'file_name': 'TRY_2022-05-09', 'dataset_title': 'TRY'})
+#datasets.append({'file_name': 'sPlot_2022-02-28', 'dataset_title': 'sPlot'})
 
 
 def read_files():
