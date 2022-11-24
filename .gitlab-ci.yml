@@ -71,5 +71,8 @@ pytest_3_10_coverage:
     when: always
     reports:
       junit: report.xml
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
 
