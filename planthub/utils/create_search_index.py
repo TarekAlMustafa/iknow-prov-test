@@ -3,15 +3,12 @@ import os
 from pathlib import Path
 
 import pandas as pd
-from elasticsearch_dsl import (
-    Completion,
-    Document,
-    Integer,
-    Keyword,
-    Nested,
-    SearchAsYouType,
-    Text,
-    connections,
+from elasticsearch_dsl import connections
+
+from ..search.models import (
+    PlantHubDatasetsIndex,
+    PlantHubSpeciesIndex,
+    PlantHubVariableIndex,
 )
 
 #
@@ -28,8 +25,10 @@ data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'dat
 
 datasets = []
 datasets.append({'file_name': 'PhenObs_2022-02-28 (1).csv', 'dataset_title': 'PhenObs'})
-#datasets.append({'file_name': 'TRY_2022-05-09', 'dataset_title': 'TRY'})
-#datasets.append({'file_name': 'sPlot_2022-02-28', 'dataset_title': 'sPlot'})
+
+
+# datasets.append({'file_name': 'TRY_2022-05-09', 'dataset_title': 'TRY'})
+# datasets.append({'file_name': 'sPlot_2022-02-28', 'dataset_title': 'sPlot'})
 
 
 def read_files():
@@ -115,86 +114,6 @@ def add_hierachry(df):
     df_superorder = rename_lang_cols(df_superorder, "order")
 
     return df_superorder
-
-
-class PlantHubDatasetsIndex(Document):
-    title = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
-    dataset_id = Integer()
-    count = Integer()
-    species = Keyword()
-    subspecies = Keyword()
-    genus = Keyword()
-    family = Keyword()
-    order = Keyword()
-    superorder = Keyword()
-    subclass = Keyword()
-    class1 = Keyword()
-
-    variables = Nested(
-        multi=True,
-        properties={
-            'name_full': Text(fielddata=True, fields={'keyword': Keyword()}),
-            'type': Text(fielddata=True, fields={'keyword': Keyword()}),
-            'subtype': Text(fielddata=True, fields={'keyword': Keyword()}),
-        }
-    )
-
-    class Index:
-        name = "planthub_datasets_index"
-        settings = {"number_of_shards": 1, "number_of_replicas": 0}
-
-
-class PlantHubSpeciesIndex(Document):
-    taxon_name = Completion(contexts=[{"name": "taxon_rank", "type": "category", "path": "taxon_rank"}])
-    taxon_rank = Keyword()
-    translation = Nested(
-        multi=True,
-        properties={
-            'name': Text(fielddata=True, fields={'completion': Completion()}),
-            'lang': Text(fielddata=True, fields={'keyword': Keyword()}),
-            'taxon_name': Keyword(),
-            'taxon_rank': Keyword()
-        }
-    )
-
-    other_keywords = Nested(
-        multi=True,
-        properties={
-            'name': Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()}),
-        }
-    )
-
-    class Index:
-        name = "planthub_species_index"
-        settings = {"number_of_shards": 1, "number_of_replicas": 0}
-
-
-class PlantHubVariableIndex(Document):
-    variable_name = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion(),
-                                                 'search_as_you_type': SearchAsYouType(max_shingle_size=3)})
-    variable_description = Text()
-    variable_type = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
-    variable_subtype = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
-
-    translation = Nested(
-        multi=True,
-        properties={
-            'name': Text(fielddata=True, fields={'completion': Completion()}),
-            'lang': Text(fielddata=True, fields={'keyword': Keyword()}),
-            'ref_variable_name': Keyword()
-        }
-    )
-
-    other_keywords = Nested(
-        multi=True,
-        properties={
-            'name': Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()}),
-        }
-    )
-
-    class Index:
-        name = "planthub_variables_index"
-        settings = {"number_of_shards": 1, "number_of_replicas": 0}
 
 
 def set_values(found_arr, value):
