@@ -6,9 +6,9 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
+from .cols import CAT_COLS, CONT_COLS
+from .format import format_labels, get_cat_name
 from .read_data import (
-    cat_columns,
-    continuous_columns,
     data_frames,
     dataframe_options,
     get_valid_second_column,
@@ -33,6 +33,11 @@ def create_scatter_plot(name_of_data_frame, x, y, color, log_x, log_y):
     kwargs = {}
     if color == 'None':
         helper_df = df[[x, y, 'AccSpeciesName', ]].dropna(subset=[x, y])
+        helper_df.columns = [
+            get_cat_name(name_of_data_frame, x, CONT_COLS),
+            get_cat_name(name_of_data_frame, y, CONT_COLS),
+            "AccSpeciesName"
+        ]
     else:
         helper_df = df[[x, y, color, 'AccSpeciesName', ]].dropna(subset=[x, y])
         # Now we make sure that the category 'unknown' gets colored gray
@@ -41,18 +46,35 @@ def create_scatter_plot(name_of_data_frame, x, y, color, log_x, log_y):
         cmap_list = zip(categories, cc.glasbey)
         cmap_dict = {n: k for n, k in cmap_list}
         cmap_dict['unknown'] = 'gray'
-        kwargs['color'] = color
+        kwargs['color'] = get_cat_name(name_of_data_frame, color, CAT_COLS)
         kwargs['color_discrete_map'] = cmap_dict
+
+        helper_df.columns = [
+            get_cat_name(name_of_data_frame, x, CONT_COLS),
+            get_cat_name(name_of_data_frame, y, CONT_COLS),
+            get_cat_name(name_of_data_frame, color, CAT_COLS),
+            "AccSpeciesName"
+        ]
     # Tell the user how many points there are (and whether there were too many/zero...)
     size = len(helper_df)
-    kwargs['title'] = f'{size} datapoints: Scatterplot {x} vs. {y}'
+    kwargs['title'] = f'{size} datapoints: Scatterplot {get_cat_name(name_of_data_frame, x, CONT_COLS)} ' \
+                      f'vs. {get_cat_name(name_of_data_frame, y, CONT_COLS)}'
     if size > 20000:
         helper_df = helper_df.sample(n=20000)
         kwargs['title'] = f'Too many points to show in a browser. You only see a sample of 20000 out of {size} points'
     if len(helper_df) == 0:
         # This cannot happen thanks to callbacks. But let's be sure
         kwargs['title'] = 'No datapoints for the requested combination of x-axes and y-axes'
-    return px.scatter(helper_df, x=x, y=y, hover_name='AccSpeciesName', log_y=log_y, log_x=log_x, **kwargs)
+
+    return px.scatter(
+        helper_df,
+        x=get_cat_name(name_of_data_frame, x, CONT_COLS),
+        y=get_cat_name(name_of_data_frame, y, CONT_COLS),
+        hover_name='AccSpeciesName',
+        log_y=log_y,
+        log_x=log_x,
+        **kwargs
+    )
 
 
 app.layout = html.Div(children=[
@@ -162,7 +184,7 @@ def update_x_cols(name_of_data_frame, old_value):
     :param name_of_data_frame:
     :return:
     """
-    cols = [{'label': i, 'value': i} for i in continuous_columns[name_of_data_frame]]
+    cols = format_labels(name_of_data_frame, CONT_COLS)
 
     # Just take any possible option as start value. In our case it is the last of all possible options for x
     if old_value in [i['value'] for i in cols]:
@@ -189,8 +211,8 @@ def update_y_cols(name_of_dataframe, x_col, old_value):
     :param old_value:
     :return:
     """
-    cols = [{'label': i, 'value': i} for i in get_valid_second_column(name_of_dataframe, x_col) if
-            i in continuous_columns[name_of_dataframe]]
+
+    cols = format_labels(name_of_dataframe, CONT_COLS, valid_cols=get_valid_second_column(name_of_dataframe, x_col))
 
     # In case the original y-value is still allowed, we keep it, else we just take any arbitrary allowed value
     if old_value in [i['value'] for i in cols]:
@@ -209,11 +231,13 @@ def update_y_cols(name_of_dataframe, x_col, old_value):
     State('color-column', 'value'),
 )
 def filter_color_cats(name_of_dataframe, x_col, y_col, old_value):
-    color_col_option = [{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for i in
-                                                               cat_columns[name_of_dataframe] if i in
-                                                               get_valid_third_column(name_of_dataframe, x_col,
-                                                                                      y_col) and
-                                                               i != 'AccSpeciesName']
+    color_col_option = [
+        i for i in format_labels(
+            name_of_dataframe,
+            CAT_COLS,
+            valid_cols=get_valid_third_column(name_of_dataframe, x_col, y_col))
+        if i != "AccSpeciesName"
+    ]
     # In case the original color-value is still allowed, we keep it, else we just take 'None'
     if old_value in [i['value'] for i in color_col_option]:
         new_value = old_value

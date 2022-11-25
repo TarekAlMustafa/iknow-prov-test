@@ -6,6 +6,8 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
+from .cols import CONT_COLS
+from .format import format_labels, get_cat_name
 from .read_data import continuous_columns, data_frames, dataframe_options
 
 app = DjangoDash('histogram')
@@ -30,7 +32,11 @@ def create_histogram(name_of_dataframe, x, number_of_bins):
     # we plot a bar of height 48 at 50cm.
     edges = 0.5 * (edges[:-1] + edges[1:])
 
-    return px.bar(x=edges, y=counts, labels={'x': x, 'y': 'count'})
+    return px.bar(
+        x=edges,
+        y=counts,
+        labels={'x': get_cat_name(name_of_dataframe, x, CONT_COLS), 'y': 'count'}
+    )
     # return px.histogram(df, x=x)
 
 
@@ -94,7 +100,7 @@ app.layout = html.Div([
     State('x-axis', 'value'),
 )
 def update_possible_densities(name_of_data_frame, old_value):
-    cols = [{'label': i, 'value': i} for i in continuous_columns[name_of_data_frame]]
+    cols = format_labels(name_of_data_frame, CONT_COLS)
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
     else:

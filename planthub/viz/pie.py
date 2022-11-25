@@ -7,7 +7,9 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .read_data import cat_columns, data_frames, dataframe_options
+from .cols import CAT_COLS
+from .format import format_labels, get_cat_name
+from .read_data import data_frames, dataframe_options
 
 app = DjangoDash('pie')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
@@ -66,9 +68,18 @@ def create_pie_chart(name_of_data_frame, cat, show_unknown):
         else:
             data.loc[c, 'color'] = cc.glasbey[temp]
             temp += 1
+
     color_dict = {k: v for (k, v) in zip(data.index, data['color'])}
-    return px.pie(data, values='frequency', names=data.index, title='Pie chart', color=data.index,
-                  color_discrete_map=color_dict)
+    data.index.name = get_cat_name(name_of_data_frame, cat, CAT_COLS)
+
+    return px.pie(
+        data,
+        values='frequency',
+        names=data.index,
+        title='Pie chart',
+        color=data.index,
+        color_discrete_map=color_dict
+    )
 
 
 app.layout = html.Div(children=[
@@ -135,7 +146,7 @@ app.layout = html.Div(children=[
     State('cat', 'value'),
 )
 def update_possible_categories(name_of_dataframe, old_value):
-    cols = [{'label': i, 'value': i} for i in cat_columns[name_of_dataframe]]
+    cols = format_labels(name_of_dataframe, CAT_COLS)
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
     else:
