@@ -41,7 +41,7 @@ pytest_3_9:
     - pip install -r requirements/local.txt
     - python manage.py makemigrations
     - python manage.py migrate
-    - python manage.py runserver 8000 &
+    - python manage.py check
 
   script:
     - pytest --junitxml=report.xml
@@ -65,8 +65,7 @@ pytest_3_10_coverage:
     - pip install -r requirements/local.txt
     - python manage.py makemigrations
     - python manage.py migrate
-    - python manage.py runserver 8000 &
-
+    - python manage.py check
   script:
     - pytest --junitxml=report.xml
     - pip install pytest pytest-cov
@@ -80,27 +79,4 @@ pytest_3_10_coverage:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-
-pytest_3_10_win:
-  stage: test
-  image: 3.12.0a2-windowsservercore-ltsc2022
-  variables:
-    DATABASE_URL2: 'sqlite:////test_db.sqlite3'
-
-
-  before_script:
-    - pip install virtualenv
-    - virtualenv venv
-    - source venv/bin/activate
-    - pip install -r requirements/local.txt
-    - python manage.py makemigrations
-    - python manage.py migrate
-    - python manage.py runserver 8000 &
-
-  script:
-    - pytest --junitxml=report.xml
-  artifacts:
-    when: always
-    reports:
-      junit: report.xml
 
