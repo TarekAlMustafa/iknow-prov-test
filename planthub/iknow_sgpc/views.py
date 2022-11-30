@@ -11,6 +11,10 @@ from planthub.iknow_sgp.views import (
     sgp_replace_mapping_file_with_copy,
 )
 
+from planthub.iknow_manager.models import get_property_url_by_label
+
+from planthub.iknow_manager.cleaning_scripts.wikitesttool import jsonResult_to_list, get_wikidata_entities, build_query
+
 from .models import SGPC, BioProject
 
 
@@ -83,6 +87,24 @@ def sgpc_info():
     return info
 
 
+def sgpc_info_by_collection_name(list_of_collectionsID):
+    """
+    Returns information about all sgpc in the database,
+    for the client to display and choose from.
+    """
+    # table header
+    info = [['Collectionname', 'Bioprojectname', '# associated graphs']]
+
+    sgpc: SGPC
+    for sgpc in SGPC.objects.all():
+        split_collectionname = sgpc.collectionname.split("_")
+
+        if len(split_collectionname) > 1 and split_collectionname[1] in list_of_collectionsID:
+            info.append([sgpc.collectionname, sgpc.bioprojectname, sgpc.associated_sgprojects.all().count(), sgpc.pk])
+
+    return info
+
+
 def sgpc_in_progress(sgpc: SGPC):
     """
     Checks if tool is running for a given sgpc.
@@ -134,6 +156,10 @@ def sgpc_history_renamed(sgpc: SGPC):
             name = "Cells Linking (after editing)"
         if cur_type == 'schemarefine':
             name = "Schema Refinement"
+        if cur_type == 'querybuilding':
+            name = "Query Building"
+        if cur_type == 'downloading':
+            name = "Downloading"
 
         helper.append([key, name])
 
@@ -290,7 +316,6 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
                 # print("deleting ", mapping_copy[key])
                 del mapping_copy[key]
                 break
-
     for key, value in edits['added'].items():
         next_key = get_next_unused_key(mapping_copy)
         print("NEXT KEY", next_key, " TYPE: ", type(next_key))
@@ -298,7 +323,32 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
         # print("ADD: ", addition)
         print("TYPEMAP: ", type(mapping_copy))
 
-        mapping_copy[next_key] = [value['s'], "", value['p'], "", value['o'], ""]
+        # if you want to find the url for properties please check the below code
+
+        # label_collector.append(value['p'])
+        # print("-----------------------------------------------")
+        # print("label_collector", label_collector)
+        # property_uri = get_wikidata_entities(build_query([label_collector]))
+        # print("property_uri", property_uri)
+
+        # add url to cpaMapping
+        sgps = sgpc.associated_sgprojects.all()
+        for sgp in sgps:
+            if value['s'] in sgp.original_table_header.values():
+                get_slabel_index = list(sgp.original_table_header.values()).index(value['s'])
+                sUrl = sgp.provenanceRecord["0"]["selection"]["mapping"][str(get_slabel_index)]
+
+            if value['o'] in sgp.original_table_header.values():
+                get_olabel_index = list(sgp.original_table_header.values()).index(value['o'])
+                oUrl = sgp.provenanceRecord["0"]["selection"]["mapping"][str(get_olabel_index)]
+
+        # check if property url already present in IKNOWproperty model
+        pUrl = get_property_url_by_label(value['p'])
+
+        if pUrl == None:
+            pUrl = f"https://planthub.idiv.de/iknow/wiki/P{str(sgpc.id)}_{str(next_key)}"
+
+        mapping_copy[next_key] = [sUrl, value['s'], pUrl, value['p'], oUrl, value['o']]
 
     sgpc.cpaMappings = mapping_copy
     sgpc_append_editCpa_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
@@ -309,12 +359,13 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
     sgpc.save()
 
 
-def sgpc_edit_schema(sgpc: SGPC, edits: dict):
+def sgpc_edit_schema(sgpc: SGPC, sgpc_pk, edits: dict):
     """
     Applies user edits of schema (subclass-mappings) so the field
     in the sgpc. Then calls sgpc_append_schema_step().
     """
     schemaCopy = sgpc.subclassMappings
+    classUrl = "https://planthub.idiv.de/iknow/wiki/C"
 
     for deletion in edits['deleted']:
         for key, valueDic in schemaCopy.items():
@@ -329,6 +380,8 @@ def sgpc_edit_schema(sgpc: SGPC, edits: dict):
         schemaCopy[next_key] = {}
         schemaCopy[next_key]['s'] = value['s']
         schemaCopy[next_key]['o'] = value['o']
+        schemaCopy[next_key]['slabel'] = classUrl + str(sgpc_pk) + str(next_key) + '0'
+        schemaCopy[next_key]['olabel'] = classUrl + str(sgpc_pk) + str(next_key) + '1'
 
         print("Added: ", schemaCopy[next_key])
 

@@ -1,12 +1,15 @@
 import json
 import requests
 import pandas as pd
+from datetime import date
 # from django.contrib.auth.decorators import login_required
+from rest_framework import generics, permissions, status
 from django.http import HttpResponse, JsonResponse
 from rest_framework.decorators import api_view
 # from django.utils.decorators import method_decorator
 # from iknow_tools.views import get_all_tools_workflow_info
 from rest_framework.response import Response
+from django.conf import settings
 # from distutils.log import error
 # from django.db import models
 # from django.shortcuts import render
@@ -19,8 +22,13 @@ from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
 from planthub.iknow_manager.models import (
     CPAmapping,
     IknowEntity,
+    get_property_url_by_label,
     create_new_headerclass,
+    safe_querymetadata,
     get_all_headerclasses,
+    save_cpamappings,
+    save_IKNOWclass,
+    save_IKNOWproperty
 )
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
@@ -29,6 +37,8 @@ from planthub.iknow_sgp.views import (
     sgp_append_linking_step,
     sgp_append_mapping_step,
     sgp_append_schema_step,
+    sgp_append_querybuilding_step,
+    sgp_append_downloading_step,
     sgp_create,
     sgp_edit_mapping,
     sgp_from_key,
@@ -52,6 +62,7 @@ from planthub.iknow_sgpc.views import (  # get_all_header_mappings,; get_history
     sgpc_history_renamed,
     sgpc_in_progress,
     sgpc_info,
+    sgpc_info_by_collection_name,
     sgpc_undo_till_phase,
 )
 
@@ -81,6 +92,8 @@ jr_error_message = {"msg": "error"}
 class CreateSgpcView(APIView):
     # login required class decorator
     # @method_decorator(login_required)
+    # permission_classes = [permissions.IsAuthenticated, ]
+
     def post(self, request):
         return sgpc_create(request)
 
@@ -172,6 +185,8 @@ class FetchDataView(APIView):
         else:
             data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history, req_categories)
 
+        print("data", data)
+
         response = JsonResponse(data, safe=False)
 
         return response
@@ -249,6 +264,9 @@ class FetchDataView(APIView):
         Load and return content and required information on all
         datasets in a sgpc.
         """
+
+        # TODO task 2
+        #
         prepared_datasets = {}
         response_data = {}
 
@@ -358,6 +376,7 @@ class CleaningView(APIView):
             return jr_error
 
         # TODO: implement analog to LinkingView and LinkingToolsResponse
+        # TODO task 3: write cleaning function here
 
         return Response()
 
@@ -578,7 +597,7 @@ class EditSchemaView(APIView):
         if sgpc is False:
             return jr_error
 
-        sgpc_edit_schema(sgpc, data)
+        sgpc_edit_schema(sgpc, sgpc_pk, data)
 
         return Response()
 
@@ -872,15 +891,17 @@ def find_subclasses(sgpc: SGPC):
     """
     headers = []
     for sgp in sgpc.associated_sgprojects.all():
-        for entry in sgp.provenanceRecord['0']['selection']['mapping'].values():
-            headers.append(entry)
+        for i, entry in enumerate(sgp.provenanceRecord['0']['selection']['mapping'].values()):
+            label = sgp.provenanceRecord['0']['selection']['child'][str(i)]
+            headers.append([label, entry])
     result = findsubclasses.main(headers, "")
 
     counter = 0
     subclasses_to_save = {}
     for s in result:
-        for parent in result[s]['parentclasses']:
-            helper = {'s': result[s]['label'], 'o': parent}
+        for i, parent in enumerate(result[s]['parentclasses']):
+            helper = {'s': result[s]['uri'], 'slabel': result[s]['slabel'],
+                      'o': parent, 'olabel': result[s]['parentlabel'][i]}
             subclasses_to_save[str(counter)] = helper
             counter += 1
 
@@ -918,7 +939,7 @@ def find_mappings(sgpc: SGPC):
     sgpc.save()
 
 
-def generate_missing_entities(sgp: SGP):
+def generate_missing_entities(sgp: SGP, sgpcID):
     """
     For a given sgp, reads mapping file and latest dataset.
     Searches for IknowEntities with same value, or creates new
@@ -944,7 +965,7 @@ def generate_missing_entities(sgp: SGP):
                     new = result[1]
 
                     if new:
-                        entity.uri = f"{IKNOW_NAMESPACE}E{entity.pk}"
+                        entity.uri = f"{IKNOW_NAMESPACE}E{sgpcID}_{entity.pk}"
                         entity.label = original_df.iat[j, i]
                         entity.save()
 
@@ -976,7 +997,48 @@ def get_sgpc_info(request):
 
 
 @api_view(['GET'])
+def get_sgpc_info_by_collection_name(request):
+    """
+    Returns list with information about all sgpcs by collectionname.
+    """
+    sgpcID = request.GET.get('sgpcID', default=None)
+
+    response = JsonResponse({"tabledata": sgpc_info_by_collection_name(sgpcID)})
+
+    return response
+
+
+@api_view(['GET'])
 def get_sgpc_provenance(request):
+    """
+    Returns information about all phases in the provenance record
+    of all sgps in a sgpc.
+    """
+    sgpc_pk = request.GET.get('sgpc_pk', default=None)
+    sgpc = sgpc_from_key(sgpc_pk)
+
+    if sgpc is False:
+        return jr_error
+
+    createdBy = sgpc.createdBy
+    createdAt = sgpc.createdAt
+
+    response_content = {"tabledata": {}, "sgpc_pk": sgpc_pk, "createdBy": createdBy, "createdAt": createdAt}
+
+    sgp: SGP
+    for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
+        response_content["tabledata"][i] = {}
+        response_content["tabledata"][i]["provdata"] = sgp_get_provrec(sgp.pk)
+        response_content["tabledata"][i]["sgp_pk"] = sgp.pk
+        response_content["tabledata"][i]["filename"] = sgp.original_filename
+
+    response = JsonResponse(response_content)
+
+    return response
+
+
+@api_view(['GET'])
+def download_sgpc_provenance(request):
     """
     Returns information about all phases in the provenance record
     of all sgps in a sgpc.
@@ -993,8 +1055,6 @@ def get_sgpc_provenance(request):
     for i, sgp in enumerate(sgpc.associated_sgprojects.all()):
         response_content["tabledata"][i] = {}
         response_content["tabledata"][i]["provdata"] = sgp_get_provrec(sgp.pk)
-        response_content["tabledata"][i]["sgp_pk"] = sgp.pk
-        response_content["tabledata"][i]["filename"] = sgp.original_filename
 
     response = JsonResponse(response_content)
 
@@ -1003,11 +1063,45 @@ def get_sgpc_provenance(request):
 
 @api_view(['GET'])
 def get_bioproject_names(request):
+    permission_classes = [permissions.IsAuthenticated, ]  # add this for authentication
     """
     Returns all disctinct bioproject names.
     """
     response = JsonResponse({"projectNames": BioProject.get_all_project_names()})
     return response
+
+
+@api_view(['GET'])
+def get_collection_names(request):
+    """
+    Returns all disctinct bioproject names.
+    """
+
+    print("get_all_collection_names", SGPC.get_all_collection_names())
+
+    response = JsonResponse({"collectionnames": SGPC.get_all_collection_names()})
+    return response
+
+
+class QueryTemplate(APIView):
+    def get(self, request):
+        # get parameters from request
+        sgpc_pk = request.GET.get('sgpc_pk', default=None)
+        print("sgpc_pk2", sgpc_pk)
+        sgpc = sgpc_from_key(sgpc_pk)
+
+        if sgpc is False:
+            return jr_error
+
+        proj_name = sgpc.bioprojectname
+        for sgp in sgpc.associated_sgprojects.all():
+            data = sgp.provenanceRecord["0"]["selection"]
+            original_header = sgp.original_table_header
+            print("original_header", original_header)
+            safe_querymetadata(data, original_header, proj_name)
+            sgp_append_querybuilding_step(sgp)
+
+        return Response()
 
 
 class GenerateTTL(APIView):
@@ -1019,7 +1113,7 @@ class GenerateTTL(APIView):
     # such an index can be used to name URIS/graphnames/etc. accordingly
     row_observation_index = 0
 
-    def add_rowobservation_class(self, g):
+    def add_rowobservation_class(self, g, sgpcID):
         """
         e.g.
         [<https://planthub.idiv.de/iknow/RO>] [a] [owl:Class] ;
@@ -1035,6 +1129,12 @@ class GenerateTTL(APIView):
             URIRef(f"{self.IKNOW_RO}"),
             RDFS.label,
             Literal("Virtual Row Observation")
+        ))
+
+        g.add((
+            URIRef(f"{self.IKNOW_RO}"),
+            RDFS.seeAlso,
+            Literal("sgpc_"+sgpcID)
         ))
 
     def get_entites_uri(self, g, label=""):
@@ -1086,51 +1186,7 @@ class GenerateTTL(APIView):
                 URIRef(mapping_column[i]), RDFS.label, Literal(column[i])
             ))
 
-    def add_row_obseration(self, g, original_row, cea_row, col_types, row_obs_properties):
-        """
-        e.g.
-        [row-observation] [iknow:P0] [<http://www.wikidata.org/entity/Q236049>];
-                    [iknow:P1] [<http://www.wikidata.org/entity/Q158008>] ;
-                    [iknow:P2] ["909"] ;
-                    [iknow:P3] ["2020"] ;
-                    [iknow:P4] ["79"] .
-        """
-        global row_observation_index
-        for i, value in enumerate(original_row):
-            # print(col_types[i])
-            g.add((
-                URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
-                RDF.type,
-                URIRef(f"{self.IKNOW_RO}")
-            ))
-
-            if col_types[i] == "String":
-                # print("Adding Cell String")
-                # print(f"{value} {cea_row[i]}")
-                g.add((
-                    URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
-                    URIRef(row_obs_properties[i]),
-                    URIRef(cea_row[i])
-                ))
-            else:
-                # print("Adding Cell NON-String")
-                g.add((
-                    URIRef(f"{self.IKNOW_RO}{row_observation_index}"),
-                    URIRef(row_obs_properties[i]),
-                    Literal(value)
-                ))
-
-    def add_SubClass_Mappings(self, g, subclassMappings):
-        for i, subClassMap in subclassMappings.items():
-            print("Each subClassMap", subClassMap)
-            g.add((
-                URIRef(subClassMap['s']),
-                RDFS.subClassOf,
-                URIRef(subClassMap['o']),
-            ))
-
     def add_properties(self, g, sgpcID, uri, oType, label=""):
-        print("sgpcID", sgpcID)
         """
         e.g.
         [wiki:Q30513971] [a] OWL.ObjectProperty;
@@ -1146,7 +1202,83 @@ class GenerateTTL(APIView):
 
         g.add((subject, RDFS.seeAlso, Literal("sgpc_"+sgpcID)))
 
-    def main(self, g, sgpc_pk,  ro_startingindex=0, property_stratingIndex=10):
+    def add_row_obseration(self, g, sgpc, sgpcID, original_row, cea_row, col_types, header_labels, row_obs_properties):
+        """
+        e.g.
+        [row-observation] [iknow:P0] [<http://www.wikidata.org/entity/Q236049>];
+                    [iknow:P1] [<http://www.wikidata.org/entity/Q158008>] ;
+                    [iknow:P2] ["909"] ;
+                    [iknow:P3] ["2020"] ;
+                    [iknow:P4] ["79"] .
+        """
+
+        global row_observation_index
+        # row_obs_properties_url = f"https://planthub.idiv.de/iknow/wiki/SGPC_{sgpcID}_P"
+        row_obs_properties_url = f"https://planthub.idiv.de/iknow/wiki/P{sgpcID}_R"
+        for i, value in enumerate(original_row):
+            print("value", i, value)
+            row_obs_property_label = "has_" + header_labels[i]
+            row_obs_property_url = sgpc.get_property_uri(row_obs_property_label)
+            if row_obs_property_url == None:
+                row_obs_property_url = get_property_url_by_label(row_obs_property_label)
+                if row_obs_property_url == None:
+                    row_obs_property_url = row_obs_properties_url + str(i)
+            # print(col_types[i])
+            g.add((
+                URIRef(f"{self.IKNOW_RO}_sgpc_{sgpcID}_{row_observation_index}"),
+                RDF.type,
+                URIRef(f"{self.IKNOW_RO}")
+            ))
+
+            g.add((
+                URIRef(f"{self.IKNOW_RO}_sgpc_{sgpcID}_{row_observation_index}"),
+                RDFS.seeAlso,
+                Literal("sgpc_"+sgpcID)
+            ))
+
+            if col_types[i] == "String":
+                # Create new properties with label has_col_header label and assign url to them and seeAlso
+                # print("Adding Cell String")
+                # print(f"{value} {cea_row[i]}")
+                g.add((
+                    URIRef(f"{self.IKNOW_RO}_sgpc_{sgpcID}_{row_observation_index}"),
+                    # URIRef(row_obs_properties_url + str(i)),
+                    URIRef(row_obs_property_url),
+                    URIRef(cea_row[i])
+                ))
+            else:
+                # print("Adding Cell NON-String")
+                g.add((
+                    URIRef(f"{self.IKNOW_RO}_sgpc_{sgpcID}_{row_observation_index}"),
+                    URIRef(row_obs_property_url),
+                    Literal(value)
+                ))
+
+            # add property
+            self.add_properties(g, sgpcID, row_obs_property_url, col_types[i], row_obs_property_label)
+
+    def add_SubClass_Mappings(self, g, sgpcID, subclassMappings):
+        for i, subClassMap in subclassMappings.items():
+            g.add((
+                URIRef(subClassMap['s']),
+                RDFS.subClassOf,
+                URIRef(subClassMap['o']),
+            ))
+
+            # TODO: add label and sgpc_124 to Object olabel
+            g.add((
+                URIRef(subClassMap['o']),
+                RDFS.label,
+                Literal(subClassMap['olabel']),
+            ))
+
+            g.add((
+                URIRef(subClassMap['o']),
+                RDFS.seeAlso,
+                Literal("sgpc_"+sgpcID),
+            ))
+
+    def main(self, g, sgpc_pk, dformat, ro_startingindex=0, property_stratingIndex=10):
 
         # TODO:
         #   - replace row_observation_index with
@@ -1176,7 +1308,7 @@ class GenerateTTL(APIView):
         sgpc = sgpc_from_key(sgpc_pk)
         sgps = sgpc.associated_sgprojects.all()
         for sgp in sgps:
-            generate_missing_entities(sgp)
+            generate_missing_entities(sgp, sgpc_pk)
             original_file_path = sgp_get_input_file(sgp)
             cea_file_path = sgp_get_mapping_file(sgp)
             col_types = sgp_get_col_types(sgp)
@@ -1188,7 +1320,7 @@ class GenerateTTL(APIView):
             original_df = pd.read_csv(original_file_path.file_field.path)
             cea_df = pd.read_csv(cea_file_path.file_field.path)
 
-            self.add_rowobservation_class(g)
+            self.add_rowobservation_class(g, sgpc_pk)
 
             for i, mapping in sgp.provenanceRecord["0"]["selection"]["mapping"].items():
                 header_mapping.append(mapping)
@@ -1208,7 +1340,7 @@ class GenerateTTL(APIView):
                     # TODO: - implement according to RDF Structure
                     pass
 
-            self.add_SubClass_Mappings(g, sgpc.subclassMappings)
+            self.add_SubClass_Mappings(g, sgpc_pk, sgpc.subclassMappings)
 
             # add properties
             for mapping in sgpc.cpaMappings.values():
@@ -1217,14 +1349,16 @@ class GenerateTTL(APIView):
                 typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_from_original_columns)]
                 self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])
 
-        # for i in range(len(original_df)):
-        #     self.add_row_obseration(original_df.iloc[i], cea_df.iloc[i],
-        #                             col_types, row_obs_properties)
-        #     row_observation_index += 1
+            sgp_append_downloading_step(sgp)
+
+        for i in range(len(original_df)):
+            self.add_row_obseration(g, sgpc, sgpc_pk, original_df.iloc[i], cea_df.iloc[i],
+                                    col_types, header_labels, row_obs_properties)
+            row_observation_index += 1
 
         # for i, row in enumerate(original_df.iterrows()):
         #     print(type(row))
-        #     add_row_obseration(row, cea_df.iloc[i], col_types)
+        #     add_row_obseration(g, sgpc_pk,row, cea_df.iloc[i], col_types)
 
         # this is wikidata suclass URI, but we use rdfs.subclassof
         # URIRef("https://www.wikidata.org/wiki/Property:P279")
@@ -1339,7 +1473,8 @@ class GenerateTTL(APIView):
 
         # generate and write to file
         # g.serialize(destination="test_result.ttl", format="ttl")
-        return HttpResponse(g.serialize(format="ttl"), content_type='application/x-turtle')
+        return HttpResponse(g.serialize(format=dformat))
+        # return HttpResponse(g.serialize(format="ttl"), content_type='application/x-turtle')
 
     # Test run
     # TODO: - replace with actual function call from backend
@@ -1355,6 +1490,9 @@ class GenerateTTL(APIView):
 # https://planthub.idiv.de/iknow/wiki/E1 - entitiy
 
     def get(self, request):
+        """
+        Generate a ttl based on sgpc key and format
+        """
 
         # creates the graph object which holds all triples as nodes and edges
         g = Graph()
@@ -1366,24 +1504,25 @@ class GenerateTTL(APIView):
 
         # get parameters from request
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
-        sgpc = sgpc_from_key(sgpc_pk)
+        dformat = request.GET.get('dformat', default='ttl')
 
-        print("sgpc_pk", sgpc_pk)
-        sgps = sgpc.associated_sgprojects.all()
-        for sgp in sgps:
-            print(sgp)
+        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
+        #                      ["String", "String", "String", "Integer", "Integer"],
+        #                      header_mapping, row_obs_properties)
 
-        if sgpc is False:
-            return jr_error
+        response = self.main(g, sgpc_pk, dformat)
 
-            # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
-            #                      ["String", "String", "String", "Integer", "Integer"],
-            #                      header_mapping, row_obs_properties)
+        if dformat == 'json-ld':
+            dformat = 'json'
 
-        response = self.main(g, sgpc_pk)
-
-        response['Content-Disposition'] = 'attachment; filename="results.ttl"'
+        response['Content-Disposition'] = 'attachment; filename="results.'+dformat
         return response
+
+# Blazegraph running
+# install docker from the below link
+# https://www.digitalocean.com/community/tutorials/how-to-install-and-use-docker-on-ubuntu-20-04
+# run command: docker run -p 9999:8080 <blazegraph_container_name>
+# e.g. docker run -p 9999:8080 researchspace/blazegraph
 
 
 class TTL_to_blazegraph(APIView):
@@ -1395,25 +1534,140 @@ class TTL_to_blazegraph(APIView):
         if sgpc is False:
             return jr_error
 
-        project_name = "sgpc_" + str(sgpc.pk) + "_" + sgpc.bioprojectname
-        project_named_url = "https://planthub.idiv.de/iknow/" + project_name + ".org"
-        url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + project_named_url
+        collection_name = "sgpc_" + str(sgpc.pk) + "_" + sgpc.bioprojectname
+        sgpc.collectionname = collection_name
+        sgpc.createdAt = date.today()
+        sgpc.save()
+        collection_name_url = "https://planthub.idiv.de/iknow/" + collection_name + ".org"
+        url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + collection_name_url
         headers = {'Content-Type': 'application/x-turtle'}
         generateTTL = GenerateTTL()
+
+        # creates the graph object which holds all triples as nodes and edges
+        g = Graph()
+
+        # binding a namespace to the graph
+        g.bind("wiki", generateTTL.WIKI)
+        g.bind("iknow", generateTTL.IKNOW)
+        g.bind("owl", OWL)
 
         # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
         #                      ["String", "String", "String", "Integer", "Integer"],
         #                      header_mapping, row_obs_properties)
 
-        response = generateTTL.main(sgpc_pk)
+        response = generateTTL.main(g, sgpc_pk)
 
         requests.post(url, data=response, headers=headers)
 
+        # update kg metadata
+        self.updateKgMeta(sgpc)
+
         return Response()
 
+    def updateKgMeta(self, sgpc):
+        # TODO:
+        # update list of classes, properties and cpamappings
+        # dont add iknow entitites
+
+        save_cpamappings(sgpc.cpaMappings)
+        for sgp in sgpc.associated_sgprojects.all():
+            for (i, header) in sgp.provenanceRecord["0"]["selection"]["child"].items():
+                headerUri = sgp.provenanceRecord["0"]["selection"]["mapping"][i]
+                save_IKNOWclass(header, headerUri)
+
+        for cpaMap in sgpc.cpaMappings.values():
+            save_IKNOWproperty(cpaMap[3], cpaMap[2])
+
+
+def sparql_query2(myQueryText):
+    # test = "SELECT DISTINCT * WHERE {    ?s ?p ?o .  FILTER (strstarts(str(?o),'"+ myQueryText+"'))}LIMIT 1000"
+    query = "SELECT DISTINCT ?o  WHERE {   ?s rdfs:seeAlso ?o .  ?s rdfs:label '"+myQueryText+"' }"
+    # TODO: correct the query
+    return query
+
+
+def fetch_provenance_blazegraph(myQueryText):
+
+    # url = settings.BLAZEGRAPH_URL + 'bigdata/sparql'
+
+    url = 'http://localhost:9999/blazegraph/namespace/kb/sparql'
+    print('url is:: from models.py ', url)
+
+    headers = {
+        'Accept': 'application/sparql-results+json,text/turtle'
+    }
+    print('******we are prinitng content of new query')
+    print(sparql_query2(myQueryText))
+    params = {'query': sparql_query2(myQueryText)}
+    response = requests.get(url=url, params=params, data=None, headers=headers)
+    return json.loads(response.content)
+
+
+class FetchProvenance(APIView):
+    def post(self, request):
+        """
+        Finds all sgpc's based on the queryText provided
+        """
+
+        # get queryText
+        x: dict = json.loads(request.body)["queryText"]
+        json_content = fetch_provenance_blazegraph(x)
+        # print('------------------------json_content-----------------------------')
+        # json_content = {"content": "abc"}
+        # print('-----------query result')
+
+        # print("json_content", json_content)
+        list_of_collectionsID = []
+        for binding in json_content["results"]["bindings"]:
+            get_sgpcID = binding['o']["value"].split("_")[1]
+            list_of_collectionsID.append(get_sgpcID)
+
+        sgpc_collections_info = sgpc_info_by_collection_name(list_of_collectionsID)
+        print("sgc_collections_info", sgpc_collections_info)
+
+        response = HttpResponse({"tabledata": sgpc_collections_info})
+        response['Content-Disposition'] = 'attachment; filename="results.json"'
+        # print(type(json_content))
+        return response
+
+
+@api_view(['GET'])
+def get_history(request):
+    """
+    Returns history from provance record.
+    """
+    # get parameters from request
+    sgpc_pk = request.GET.get('sgpc_pk', default=None)
+    sgpc = sgpc_from_key(sgpc_pk)
+
+    if sgpc is False:
+        return jr_error
+
+    response_data = {}
+
+    response_data['history'] = sgpc_history_renamed(sgpc)
+    response = JsonResponse(response_data)
+    return response
 
 # Provenance retrieval pages
+#   - Download workflow
+#   - show time
+# commit to git
 # Assign a url for new properties
-# Assign a url for new class on schemarefinement
+# Assign a url and seeAlso for new class on schemarefinement
+# show subclass labels
+
+
+# Row observation and attach all columns to it
+# Add iknow property check in add_row_observation
+# download different version of ttl -- Pending
+# add goto on query building and download
+
+
+# Query building page: Call eriks function
+# Add query meta data to work
+#   - Column name:: {"0": "Species", "1": "Garden"}
+#   - Column type:: {"0": "String", "1": "Integer"}
+# csv with , and ; or tell the separate -- pending
+# User login
 # delete duplicate on schemarefinement
-# csv with , and ; or tell the separate

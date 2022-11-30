@@ -1,6 +1,6 @@
 # from django.conf import settings
 from django.db import models
-
+from datetime import date
 from planthub.iknow_sgp.models import SGP
 
 # Create your models here.
@@ -49,8 +49,32 @@ class SGPC(models.Model):
     subclassMappings = models.JSONField(default=dict)
 
     collection_prov_rec = models.JSONField(default=dict)
+
+    createdBy = models.CharField(max_length=255, default='')
+
+    createdAt = models.DateField(default=date.today)
+
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)
+
+    def get_all_collection_names():
+        info = [['--select one--']]
+
+        collection_names = SGPC.objects.values('collectionname')
+
+        for collection_name in collection_names:
+            if collection_name["collectionname"] != "":
+                info.append([collection_name['collectionname']])
+
+        return info
+
+    def get_property_uri(self, label=""):
+        cpaMappingValues = self.cpaMappings.values()
+        for cpaMap in cpaMappingValues:
+            if label == cpaMap[3]:
+                return cpaMap[2]
+
+        return None
 
     # STEPS TO ADD A FIELD:
 

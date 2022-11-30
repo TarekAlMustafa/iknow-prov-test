@@ -43,16 +43,17 @@ def build_query(labels):
     query = '''
     SELECT * WHERE {
         '''
-
+    print("labels", labels)
     for i, label in enumerate(labels):
-        query += '{ ' + f'wd:{label} wdt:P279 ?{i}' + ' } UNION'
+
+        query += '{ ' + \
+            f'wd:{label[1]} wdt:P279 ?{i} .\n ?{i} rdfs:label ?{i}_label .\n FILTER (LANG(?{i}_label) = "en")' + \
+            ' } UNION'
 
     # cut off the last union suffix
     query = query[0:-6]
 
     query += ' }'
-
-    print(query)
 
     return query
 
@@ -63,7 +64,6 @@ def extract_Qlabel(wikidatalink: str):
         helper = c + helper
         if c == 'Q':
             break
-
     return helper
 
 
@@ -75,6 +75,8 @@ def evaluate_response(json_data, result):
         key = next(iter(entry))
         # print(entry[key]['value'])
         result[key]['parentclasses'].append(entry[key]['value'])
+        result[key]['parentlabel'].append(entry[key+"_label"]['value'])
+    print("result", result)
 
     return result
 
@@ -83,10 +85,13 @@ def main(header, OUTPUT_FILE):
     result = {}
     for i in range(len(header)):
         result[str(i)] = {}
-        result[str(i)]['label'] = header[i]
+        result[str(i)]['uri'] = header[i][1]
+        result[str(i)]['slabel'] = header[i][0]
         result[str(i)]['parentclasses'] = []
-        header[i] = extract_Qlabel(header[i])
+        result[str(i)]['parentlabel'] = []
+        header[i][1] = extract_Qlabel(header[i][1])
 
+    print("result in main", result)
     result = evaluate_response(send_query(build_query(header)), result)
 
     return result

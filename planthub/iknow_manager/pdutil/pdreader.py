@@ -11,9 +11,11 @@ def get_list_from_csv(path: str, header=None):
 
 
 def get_list_from_csv_first10rows(path: str, header=None):
+    # TODO task 1: handle csv separate using multiple try except
+    # example for handile errors: except UnicodeDecodeError:
+    # for more inform check dataset/view.py read_xslx function
     frame = pd.read_csv(path, header=header, quotechar="'", nrows=11)
     frame_list = frame.values.tolist()
-    print(frame_list)
 
     return frame_list
 

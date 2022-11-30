@@ -1,5 +1,6 @@
 # from django.db import models
 from django.db import models
+from django.db import IntegrityError
 
 
 class CPAmapping(models.Model):
@@ -68,6 +69,8 @@ def safe_querymetadata(data: dict, original_header: dict, proj_name: str):
 
 
 def get_all_headerclasses():
+    # TODO task 2
+    # get main_category_label and sub_category_label based on header
     all_classes = {}
     c: HeaderClass
     for c in HeaderClass.objects.all():
@@ -96,6 +99,48 @@ def create_new_headerclass(data):
     header_class.sub_category_uri = data["newsuburi"]
 
     header_class.save()
+
+
+def get_property_url_by_label(label=""):
+    try:
+        iknowproperty = IKNOWproperty.objects.get(label=label)
+        return iknowproperty.uri
+    except IKNOWproperty.DoesNotExist:
+        return None
+
+
+def save_cpamappings(cpamappings):
+    """
+    Creates a new entry of CPAMappings.
+    """
+
+    # TODO: handle duplicated values
+    # Solution 1: Before save check if the values already exist in the table
+    # Solution 2: Make the CPAmapping defination unique like uri in IKNOWclass then add IntegrityError
+    for cpaMap in cpamappings.values():
+        new_CAP = CPAmapping()
+        [new_CAP.s, new_CAP.sLabel, new_CAP.p, new_CAP.pLabel, new_CAP.o, new_CAP.oLabel] = cpaMap
+        new_CAP.save()
+
+
+def save_IKNOWclass(iknowclasslabel, iknowclassuri):
+    new_iknowclass = IKNOWclass()
+    new_iknowclass.uri = iknowclassuri
+    new_iknowclass.label = iknowclasslabel
+    try:
+        new_iknowclass.save()
+    except IntegrityError:
+        pass
+
+
+def save_IKNOWproperty(iknowpropertylabel, iknowpropertyuri):
+    new_iknowproperty = IKNOWproperty()
+    new_iknowproperty.uri = iknowpropertyuri
+    new_iknowproperty.label = iknowpropertylabel
+    try:
+        new_iknowproperty.save()
+    except IntegrityError:
+        pass
 
 
 def get_entity_by_label():

@@ -39,6 +39,7 @@ def get_wikidata_entities(query: str):
         if str(r) != "<Response [429]>":
             try:
                 data = r.json()
+                # print("get_wikidata_entities_data", data)
                 fin = True
             except Exception as e:
                 print("JSON EROR: ", e)
@@ -72,7 +73,7 @@ def build_query(labels, species_col=[]):
         SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
     }
     '''
-
+    print(query, "query")
     return query
 
 
@@ -84,7 +85,7 @@ def add_species_label_query_piece(temp_query: str, i: int,
                             'UNION '
     else:
         temp_query += '{' + f'?{i} rdfs:label "{label}"@en .\n '\
-                + f'?{i} wdt:P31 wd:Q16521 .' + '}\n'
+            + f'?{i} wdt:P31 wd:Q16521 .' + '}\n'
 
     return temp_query
 
@@ -97,7 +98,7 @@ def add_string_label_query_piece(temp_query: str, i: int,
                             'UNION '
     else:
         temp_query += '{' + f'?{i} rdfs:label "{label}"@en .\n '\
-                 + '}\n'
+            + '}\n'
 
     return temp_query
 
@@ -219,6 +220,10 @@ def main(INPUT_FILE, OUTPUT_FILE, COL_TYPES, NUM_QUERY_ENTITIES=50):
         for i, cell in enumerate(row[1]):
             if COL_TYPES[i] == 'String':
                 label_helper.append(cell)
+
+                # TODO task 4: consider column heading
+                # print("cell + " " + df.columns.values[i]", cell + " " + df.columns.values[i])
+                # label_helper.append(cell + " " + df.columns.values[i])
 
         label_collector.append(label_helper)
 

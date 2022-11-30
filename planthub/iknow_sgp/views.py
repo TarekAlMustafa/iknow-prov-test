@@ -134,6 +134,31 @@ def sgp_append_init_step(sgp: SGP, init_data, method: str = "iknow-method"):
     sgp.save()
 
 
+def sgp_append_querybuilding_step(sgp: SGP, method: str = "iknow-method"):
+    """
+    Appends empty phase, marking schemarefinement as completed.
+    """
+    next_step = str(len(sgp.provenanceRecord))
+    sgp.provenanceRecord[next_step] = {}
+    sgp.provenanceRecord[next_step]["type"] = "querybuilding"
+    sgp.provenanceRecord[next_step]["actions"] = {}
+    sgp.provenanceRecord[next_step]["actions"]["method"] = method
+
+    sgp.save()
+
+def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
+    """
+    Appends empty phase, marking schemarefinement as completed.
+    """
+    next_step = str(len(sgp.provenanceRecord))
+    sgp.provenanceRecord[next_step] = {}
+    sgp.provenanceRecord[next_step]["type"] = "downloading"
+    sgp.provenanceRecord[next_step]["actions"] = {}
+    sgp.provenanceRecord[next_step]["actions"]["method"] = method
+
+    sgp.save()
+
+
 def sgp_get_output_file(sgp: SGP) -> Dataset:
     """
     Returns latest output dataset or source dataset

@@ -18,10 +18,15 @@ from .views import (
     UndoSgpcView,
     UploadToSgpcView,
     get_bioproject_names,
+    get_collection_names,
     get_sgpc_info,
     get_sgpc_provenance,
+    download_sgpc_provenance,
+    QueryTemplate,
     GenerateTTL,
-    TTL_to_blazegraph
+    TTL_to_blazegraph,
+    FetchProvenance,
+    get_history
 )
 
 urlpatterns = [
@@ -61,6 +66,8 @@ urlpatterns = [
 
     path('fetch-bioproject-names', get_bioproject_names, name="get_bioproject_names"),
 
+    path('fetch-collection-names', get_collection_names, name="get_collection_names"),
+
     path('all-sgpc-info', get_sgpc_info, name="get_sgpc_info"),
 
 
@@ -85,6 +92,8 @@ urlpatterns = [
 
     path('fetch-collection-provenance', get_sgpc_provenance, name="get_sgpc_provenance"),
 
+    path('download-collection-provenance', download_sgpc_provenance, name="get_sgpc_provenance"),
+
     path('resetcollectionto', UndoSgpcView.as_view()),
 
     path('copy-collection', CopySgpcView.as_view()),
@@ -95,9 +104,14 @@ urlpatterns = [
 
     path('delete-database', DeleteDBView.as_view()),
 
+    path('querytemplate', QueryTemplate.as_view()),
+
     path('generate-ttl', GenerateTTL.as_view()),
 
     path('ttl-to-blazegraph', TTL_to_blazegraph.as_view()),
 
+    path('find-provenance', FetchProvenance.as_view()),
+
+    path('gethistory', get_history, name="get_history"),
 
 ]
