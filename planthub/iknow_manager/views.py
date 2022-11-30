@@ -1345,9 +1345,12 @@ class GenerateTTL(APIView):
             # add properties
             for mapping in sgpc.cpaMappings.values():
                 print("maping", mapping)
-                oIndex_from_original_columns = original_df.columns.tolist().index(mapping[5])
+                oIndex_from_original_columns = list(sgp.provenanceRecord["0"]["selection"]["child"].values()).index(mapping[5])
+                #original_df.columns.tolist().index(mapping[5])
                 typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_from_original_columns)]
                 self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])
+                
+                
 
             sgp_append_downloading_step(sgp)
 
@@ -1539,7 +1542,8 @@ class TTL_to_blazegraph(APIView):
         sgpc.createdAt = date.today()
         sgpc.save()
         collection_name_url = "https://planthub.idiv.de/iknow/" + collection_name + ".org"
-        url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + collection_name_url
+        # url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + collection_name_url
+        url = settings.BLAZEGRAPH_URL + 'bigdata/sparql?context-uri=' + collection_name_url
         headers = {'Content-Type': 'application/x-turtle'}
         generateTTL = GenerateTTL()
 
@@ -1555,13 +1559,14 @@ class TTL_to_blazegraph(APIView):
         #                      ["String", "String", "String", "Integer", "Integer"],
         #                      header_mapping, row_obs_properties)
 
-        response = generateTTL.main(g, sgpc_pk)
+        response = generateTTL.main(g, sgpc_pk, "ttl")
 
         requests.post(url, data=response, headers=headers)
 
         # update kg metadata
         self.updateKgMeta(sgpc)
 
+        # TODO: check uploading was successful or not
         return Response()
 
     def updateKgMeta(self, sgpc):
@@ -1588,9 +1593,9 @@ def sparql_query2(myQueryText):
 
 def fetch_provenance_blazegraph(myQueryText):
 
-    # url = settings.BLAZEGRAPH_URL + 'bigdata/sparql'
+    url = settings.BLAZEGRAPH_URL + 'bigdata/sparql'
 
-    url = 'http://localhost:9999/blazegraph/namespace/kb/sparql'
+    # url = 'http://localhost:9999/blazegraph/namespace/kb/sparql'
     print('url is:: from models.py ', url)
 
     headers = {

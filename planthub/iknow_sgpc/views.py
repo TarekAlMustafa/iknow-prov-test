@@ -336,10 +336,12 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
         for sgp in sgps:
             if value['s'] in sgp.original_table_header.values():
                 get_slabel_index = list(sgp.original_table_header.values()).index(value['s'])
+                sLabel = sgp.provenanceRecord["0"]["selection"]["child"][str(get_slabel_index)]
                 sUrl = sgp.provenanceRecord["0"]["selection"]["mapping"][str(get_slabel_index)]
 
             if value['o'] in sgp.original_table_header.values():
                 get_olabel_index = list(sgp.original_table_header.values()).index(value['o'])
+                oLabel = sgp.provenanceRecord["0"]["selection"]["child"][str(get_olabel_index)]
                 oUrl = sgp.provenanceRecord["0"]["selection"]["mapping"][str(get_olabel_index)]
 
         # check if property url already present in IKNOWproperty model
@@ -348,7 +350,7 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
         if pUrl == None:
             pUrl = f"https://planthub.idiv.de/iknow/wiki/P{str(sgpc.id)}_{str(next_key)}"
 
-        mapping_copy[next_key] = [sUrl, value['s'], pUrl, value['p'], oUrl, value['o']]
+        mapping_copy[next_key] = [sUrl, sLabel, pUrl, value['p'], oUrl, oLabel]
 
     sgpc.cpaMappings = mapping_copy
     sgpc_append_editCpa_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
