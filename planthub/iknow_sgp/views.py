@@ -146,6 +146,7 @@ def sgp_append_querybuilding_step(sgp: SGP, method: str = "iknow-method"):
 
     sgp.save()
 
+
 def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
     """
     Appends empty phase, marking schemarefinement as completed.

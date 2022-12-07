@@ -28,7 +28,6 @@ def get_wikidata_entities(query: str):
     timeoutcounter = 0
 
     while (not fin):
-       # print("Sending request... Querylength: ", len(query))
         st = time.time()
         try:
             r = requests.post(URL, params={'format': 'json', 'query': query})

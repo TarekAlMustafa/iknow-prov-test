@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 from datetime import date
 # from django.contrib.auth.decorators import login_required
-from rest_framework import generics, permissions, status
+from rest_framework import permissions
 from django.http import HttpResponse, JsonResponse
 from rest_framework.decorators import api_view
 # from django.utils.decorators import method_decorator
@@ -890,7 +890,7 @@ def find_subclasses(sgpc: SGPC):
     fetched results from the wikidata endpoint.
     """
     headers = []
-    
+
     for sgp in sgpc.associated_sgprojects.all():
         col_types = sgp_get_col_types(sgp)
         for i, entry in enumerate(sgp.provenanceRecord['0']['selection']['mapping'].values()):
@@ -917,7 +917,7 @@ def find_subclasses(sgpc: SGPC):
 
     subclasses_to_save_unique = {}
 
-    for key,value in subclasses_to_save.items():
+    for key, value in subclasses_to_save.items():
         if value not in subclasses_to_save_unique.values():
             subclasses_to_save_unique[key] = value
 
@@ -1081,7 +1081,7 @@ def download_sgpc_provenance(request):
 
 @api_view(['GET'])
 def get_bioproject_names(request):
-    permission_classes = [permissions.IsAuthenticated, ]  # add this for authentication
+    # permission_classes = [permissions.IsAuthenticated, ]  # add this for authentication
     """
     Returns all disctinct bioproject names.
     """
@@ -1237,9 +1237,9 @@ class GenerateTTL(APIView):
             print("value", i, value)
             row_obs_property_label = "has_" + header_labels[i]
             row_obs_property_url = sgpc.get_property_uri(row_obs_property_label)
-            if row_obs_property_url == None:
+            if row_obs_property_url is None:
                 row_obs_property_url = get_property_url_by_label(row_obs_property_label)
-                if row_obs_property_url == None:
+                if row_obs_property_url is None:
                     row_obs_property_url = row_obs_properties_url + str(i)
             # print(col_types[i])
             g.add((
@@ -1346,13 +1346,12 @@ class GenerateTTL(APIView):
             header_labels = list(original_df.columns)
             for i, mapping in enumerate(header_mapping):
                 # if the column type is string we define a class for that
-                if col_types[i] == "String": 
+                if col_types[i] == "String":
                     self.add_class(g, sgpc_pk, mapping, label=header_labels[i])
                 else:
                     # TODO: define datatype for columns with numerical values
                     pass
 
-                
 
             # dd properties - @Suresh: what does this do?
             for i in range(len(original_df.columns)):
@@ -1370,11 +1369,10 @@ class GenerateTTL(APIView):
             # add properties - user defined ones
             for mapping in sgpc.cpaMappings.values():
                 print("maping", mapping)
-                oIndex_from_original_columns = list(sgp.provenanceRecord["0"]["selection"]["child"].values()).index(mapping[5])   
-                #original_df.columns.tolist().index(mapping[5])
+                oIndex_from_original_columns = list(sgp.provenanceRecord["0"]["selection"]["child"].values()).index(mapping[5])
+                # original_df.columns.tolist().index(mapping[5])
                 typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_from_original_columns)]
-                self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])
-                
+                self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])              
 
             sgp_append_downloading_step(sgp)
 
@@ -1533,7 +1531,8 @@ class GenerateTTL(APIView):
         sgpc_pk = request.GET.get('sgpc_pk', default=None)
         dformat = request.GET.get('dformat', default='ttl')
 
-        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
+        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv",
+        # "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
         #                      ["String", "String", "String", "Integer", "Integer"],
         #                      header_mapping, row_obs_properties)
 
@@ -1564,7 +1563,7 @@ class TTL_to_blazegraph(APIView):
         collection_name = "sgpc_" + str(sgpc.pk) + "_" + sgpc.bioprojectname
         sgpc.collectionname = collection_name
         sgpc.createdAt = date.today()
-        #TODO: sgpc.createdBy = get user info from 
+        #TODO: sgpc.createdBy = get user info from
         sgpc.save()
         collection_name_url = "https://planthub.idiv.de/iknow/" + collection_name + ".org"
         # url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + collection_name_url
@@ -1580,7 +1579,8 @@ class TTL_to_blazegraph(APIView):
         g.bind("iknow", generateTTL.IKNOW)
         g.bind("owl", OWL)
 
-        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
+        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", 
+        # "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
         #                      ["String", "String", "String", "Integer", "Integer"],
         #                      header_mapping, row_obs_properties)
 

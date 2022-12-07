@@ -125,7 +125,6 @@ def save_cpamappings(cpamappings):
             new_CAP.save()
         except IntegrityError:
             pass
-   
 
 
 def save_IKNOWclass(iknowclasslabel, iknowclassuri):

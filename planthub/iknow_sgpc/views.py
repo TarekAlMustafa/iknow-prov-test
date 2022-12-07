@@ -46,7 +46,7 @@ def sgpc_create(request):
     elif data['data']['projectChoice'] == 'create':
         if not BioProject.name_exists(choice):
             newProject = BioProject()
-            newProject.name = choice            
+            newProject.name = choice
             new_collection.createdBy = userName
             newProject.save()
 
@@ -350,7 +350,7 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
         # check if property url already present in IKNOWproperty model
         pUrl = get_property_url_by_label(value['p'])
 
-        if pUrl == None:
+        if pUrl is None:
             pUrl = f"https://planthub.idiv.de/iknow/wiki/P{str(sgpc.id)}_{str(next_key)}"
 
         mapping_copy[next_key] = [sUrl, sLabel, pUrl, value['p'], oUrl, oLabel]
