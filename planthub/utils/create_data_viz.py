@@ -143,11 +143,11 @@ def compute_number_of_crossings_xyzw(df: pd.DataFrame, name_of_df: str):
                 # Also the order does not matter, so only check in case i<j<k
                 # So we do not repeat unnecessary requests to da_stored
                 if i < j < k and da_stored.data[i, j, k] > 0:
-                    for l, w in enumerate(cols):
-                        if i < j < k < l:
+                    for a, w in enumerate(cols):
+                        if i < j < k < a:
                             size = len(df[[x, y, z, w]].dropna())
                             # Every possible order of x,y,z,w has the same size. Let's store it in every possible order
-                            for order in list(itertools.permutations([i, j, k, l])):
+                            for order in list(itertools.permutations([i, j, k, a])):
                                 da.data[order] = size
 
     da.to_netcdf(f'{name_of_df}_xyzw.nc')
