@@ -1,25 +1,31 @@
-import os
-
-import pandas as pd
-import numpy as np
-import scipy
-from scipy.stats import mode
 import copy
-import numpy as np
-import xarray as xr
 import itertools
-import time
+import os
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+import xarray as xr
+
 key_col = 'AccSpeciesName'
+file_name_input = 'PhenObs_2022-02-28 (1).csv'
 output_name = "Phenobs"
+
+file_name_genera = 'PlantHub genera_2022-05-13_v3.csv'
+file_name_families = 'PlantHub families_2022-05-10.csv'
+file_name_order = 'PlantHub orders_2022-05-10.csv'
+
 path = data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data', 'viz')
 # df_TRY=pd.read_csv('TRY data_2021-12-10.csv', encoding='unicode_escape',low_memory=False)
-#df_data = pd.read_csv('TRY_2022-05-09', encoding='unicode_escape', low_memory=False)
-df_data = pd.read_csv(os.path.join(data_path, 'PhenObs_2022-02-28 (1).csv'), encoding='unicode_escape', low_memory=False)
-df_genera = pd.read_csv(os.path.join(data_path,'PlantHub genera_2022-05-13_v3.csv'), encoding='UTF-8', low_memory=False, encoding_errors="replace")
-df_family = pd.read_csv(os.path.join(data_path,'PlantHub families_2022-05-10.csv'), encoding='UTF-8', low_memory=False, encoding_errors="replace")
-df_order = pd.read_csv(os.path.join(data_path,'PlantHub orders_2022-05-10.csv'), encoding='UTF-8', low_memory=False, encoding_errors="replace")
+# df_data = pd.read_csv('TRY_2022-05-09', encoding='unicode_escape', low_memory=False)
+df_data = pd.read_csv(os.path.join(data_path, file_name_input),
+                      encoding='unicode_escape', low_memory=False)
+df_genera = pd.read_csv(os.path.join(data_path, file_name_genera),
+                        encoding='UTF-8', low_memory=False, encoding_errors="replace")
+df_family = pd.read_csv(os.path.join(data_path, file_name_families),
+                        encoding='UTF-8', low_memory=False, encoding_errors="replace")
+df_order = pd.read_csv(os.path.join(data_path, file_name_order),
+                       encoding='UTF-8', low_memory=False, encoding_errors="replace")
 
 
 def mode_on_cols(df, key_col, value_cols):
@@ -31,8 +37,7 @@ def mode_on_cols(df, key_col, value_cols):
         col_data_to_be_merged = df.groupby([key_col, col]).size() \
             .to_frame('count').reset_index() \
             .sort_values('count', ascending=False) \
-            .drop_duplicates(subset=key_col) \
-            [[key_col, col]]
+            .drop_duplicates(subset=key_col)[[key_col, col]]
         result = result.merge(
             col_data_to_be_merged,
             on=key_col, how='outer',
@@ -132,8 +137,10 @@ def compute_number_of_crossings_xyzw(df: pd.DataFrame, name_of_df: str):
         print(i, n)
         for j, y in enumerate(cols):
             for k, z in enumerate(cols):
-                # The computation is very costly, so let's check whether there is at least the chance to find any plants.
-                # They have to have values at least for x, y and z. Also the order does not matter, so only check in case i<j<k
+                # The computation is very costly, so let's check whether there is at least
+                # the chance to find any plants.
+                # They have to have values at least for x, y and z.
+                # Also the order does not matter, so only check in case i<j<k
                 # So we do not repeat unnecessary requests to da_stored
                 if i < j < k and da_stored.data[i, j, k] > 0:
                     for l, w in enumerate(cols):
@@ -150,7 +157,7 @@ def compute_number_of_crossings_xyzw(df: pd.DataFrame, name_of_df: str):
 def prepare_dataframe_for_plotting_and_save_to_disk(df, name_of_dataframe):
     columns = sorted(df.columns)
     discrete = [x for x in columns if df[x].dtype.name in ['object', 'category']]
-    continuous = [x for x in columns if x not in discrete]
+    # continuous = [x for x in columns if x not in discrete]
 
     # If you tell pandas to treat categorical columns as categories, some operations will be faster in the website
     for c in discrete:
@@ -171,6 +178,7 @@ def add_family(df):
     result = pd.merge(df, df_genera, on='AccGenus', how='left')
     return result
 
+
 def add_order(df):
     result = pd.merge(df, df_family, on='Family', how='left')
     return result
@@ -179,6 +187,7 @@ def add_order(df):
 def add_superorder(df):
     result = pd.merge(df, df_order, on='Order', how='left')
     return result
+
 
 def drop_lang_cols(df):
     df.drop(columns=['EnglishName', 'GermanName'], inplace=True)
@@ -198,6 +207,7 @@ def add_hierachry(df):
     df_superorder = drop_lang_cols(df_superorder)
 
     return df_superorder
+
 
 def prepare_for_viz():
     df_data_species = aggregate_dataframe_on_species(df_data)
