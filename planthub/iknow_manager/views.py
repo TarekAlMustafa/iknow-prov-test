@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 from datetime import date
 # from django.contrib.auth.decorators import login_required
-from rest_framework import permissions
+# from rest_framework import permissions
 from django.http import HttpResponse, JsonResponse
 from rest_framework.decorators import api_view
 # from django.utils.decorators import method_decorator
@@ -912,7 +912,7 @@ def find_subclasses(sgpc: SGPC):
                       'o': parent, 'olabel': result[s]['parentlabel'][i]}
             subclasses_to_save[str(counter)] = helper
             counter += 1
-    
+
     # this list has duplicated values. to remove duplicated, we do:
 
     subclasses_to_save_unique = {}
@@ -1352,8 +1352,7 @@ class GenerateTTL(APIView):
                     # TODO: define datatype for columns with numerical values
                     pass
 
-
-            # dd properties - @Suresh: what does this do?
+            # dd properties
             for i in range(len(original_df.columns)):
                 col = original_df.iloc[:, i]
                 mapping_col = cea_df.iloc[:, i]
@@ -1369,10 +1368,10 @@ class GenerateTTL(APIView):
             # add properties - user defined ones
             for mapping in sgpc.cpaMappings.values():
                 print("maping", mapping)
-                oIndex_from_original_columns = list(sgp.provenanceRecord["0"]["selection"]["child"].values()).index(mapping[5])
+                oIndex_orig_col = list(sgp.provenanceRecord["0"]["selection"]["child"].values()).index(mapping[5])
                 # original_df.columns.tolist().index(mapping[5])
-                typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_from_original_columns)]
-                self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])              
+                typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_orig_col)]
+                self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])
 
             sgp_append_downloading_step(sgp)
 
@@ -1563,7 +1562,7 @@ class TTL_to_blazegraph(APIView):
         collection_name = "sgpc_" + str(sgpc.pk) + "_" + sgpc.bioprojectname
         sgpc.collectionname = collection_name
         sgpc.createdAt = date.today()
-        #TODO: sgpc.createdBy = get user info from
+        # TODO: sgpc.createdBy = get user info from
         sgpc.save()
         collection_name_url = "https://planthub.idiv.de/iknow/" + collection_name + ".org"
         # url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + collection_name_url
@@ -1579,7 +1578,7 @@ class TTL_to_blazegraph(APIView):
         g.bind("iknow", generateTTL.IKNOW)
         g.bind("owl", OWL)
 
-        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv", 
+        # response = self.main("/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/original.csv",
         # "/home/suresh/Uni_Jena/Related Documents/Codes/ttl/rdf_generation/cea.csv",
         #                      ["String", "String", "String", "Integer", "Integer"],
         #                      header_mapping, row_obs_properties)
