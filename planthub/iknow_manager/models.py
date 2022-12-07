@@ -6,8 +6,8 @@ from django.db import IntegrityError
 class CPAmapping(models.Model):
     s = models.CharField(max_length=4096)
     sLabel = models.CharField(max_length=4096)
-    p = models.CharField(max_length=4096)
-    pLabel = models.CharField(max_length=4096)
+    p = models.CharField(unique=True, max_length=4096)
+    pLabel = models.CharField(unique=True, max_length=4096)
     o = models.CharField(max_length=4096)
     oLabel = models.CharField(max_length=4096)
 
@@ -117,10 +117,15 @@ def save_cpamappings(cpamappings):
     # TODO: handle duplicated values
     # Solution 1: Before save check if the values already exist in the table
     # Solution 2: Make the CPAmapping defination unique like uri in IKNOWclass then add IntegrityError
+    # we currently set unique valuse for Property label and property URL
     for cpaMap in cpamappings.values():
         new_CAP = CPAmapping()
         [new_CAP.s, new_CAP.sLabel, new_CAP.p, new_CAP.pLabel, new_CAP.o, new_CAP.oLabel] = cpaMap
-        new_CAP.save()
+        try:
+            new_CAP.save()
+        except IntegrityError:
+            pass
+   
 
 
 def save_IKNOWclass(iknowclasslabel, iknowclassuri):

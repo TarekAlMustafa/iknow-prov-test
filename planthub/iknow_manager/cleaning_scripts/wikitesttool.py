@@ -28,7 +28,7 @@ def get_wikidata_entities(query: str):
     timeoutcounter = 0
 
     while (not fin):
-        print("Sending request... Querylength: ", len(query))
+       # print("Sending request... Querylength: ", len(query))
         st = time.time()
         try:
             r = requests.post(URL, params={'format': 'json', 'query': query})
@@ -191,8 +191,8 @@ def main(INPUT_FILE, OUTPUT_FILE, COL_TYPES, NUM_QUERY_ENTITIES=50):
     # TODO: - check for internet connection
     # ENTRY POINT
     # read file into memory
-    print(f"Reading file: {INPUT_FILE}")
-    print("COL_TYPES: ", COL_TYPES)
+    # print(f"Reading file: {INPUT_FILE}")
+    # print("COL_TYPES: ", COL_TYPES)
     df = pd.read_csv(INPUT_FILE)
 
     write_header_to_output(OUTPUT_FILE, list(df.columns.values))

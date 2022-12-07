@@ -12,7 +12,7 @@ def send_query(query: str):
     timeoutcounter = 0
 
     while (not fin):
-        print("Sending request... Querylength: ", len(query))
+        # print("Sending request... Querylength: ", len(query))
         st = time.time()
 
         try:
@@ -76,7 +76,7 @@ def evaluate_response(json_data, result):
         # print(entry[key]['value'])
         result[key]['parentclasses'].append(entry[key]['value'])
         result[key]['parentlabel'].append(entry[key+"_label"]['value'])
-    print("result", result)
+    # print("result", result)
 
     return result
 
@@ -91,7 +91,7 @@ def main(header, OUTPUT_FILE):
         result[str(i)]['parentlabel'] = []
         header[i][1] = extract_Qlabel(header[i][1])
 
-    print("result in main", result)
+    # print("result in main", result)
     result = evaluate_response(send_query(build_query(header)), result)
 
     return result

@@ -33,18 +33,21 @@ def sgpc_create(request):
     choice = data['data']['bioprojectname']
 
     # client wants to select the project from existing ones
+    userName = request.GET.get('userName', default='Admin')
     if data['data']['projectChoice'] == 'select':
         for proj in BioProject.objects.all():
             if proj.name == choice:
                 new_collection = SGPC()
                 new_collection.bioprojectname = proj.name
+                new_collection.createdBy = userName
                 new_collection.save()
                 return JsonResponse({"project_id": new_collection.pk})
     # client wants to create a new project
     elif data['data']['projectChoice'] == 'create':
         if not BioProject.name_exists(choice):
             newProject = BioProject()
-            newProject.name = choice
+            newProject.name = choice            
+            new_collection.createdBy = userName
             newProject.save()
 
         new_collection = SGPC()
@@ -145,13 +148,13 @@ def sgpc_history_renamed(sgpc: SGPC):
         cur_type = phase['type']
 
         if cur_type == 'linking':
-            name = "Cells Linking"
+            name = "Linking"
         if cur_type == 'cleaning':
             name = "Cleaning"
         if cur_type == 'init':
-            name = "Column type selection"
+            name = "Initialization"
         if cur_type == 'editcpa':
-            name = "Property declaration"
+            name = "Property Declaration"
         if cur_type == 'editmapping':
             name = "Cells Linking (after editing)"
         if cur_type == 'schemarefine':
@@ -159,7 +162,7 @@ def sgpc_history_renamed(sgpc: SGPC):
         if cur_type == 'querybuilding':
             name = "Query Building"
         if cur_type == 'downloading':
-            name = "Downloading"
+            name = "Saving- Pushing"
 
         helper.append([key, name])
 
@@ -318,10 +321,10 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
                 break
     for key, value in edits['added'].items():
         next_key = get_next_unused_key(mapping_copy)
-        print("NEXT KEY", next_key, " TYPE: ", type(next_key))
+        # ("NEXT KEY", next_key, " TYPE: ", type(next_key))
         # print("TYPEADD: ", type(addition))
         # print("ADD: ", addition)
-        print("TYPEMAP: ", type(mapping_copy))
+        # print("TYPEMAP: ", type(mapping_copy))
 
         # if you want to find the url for properties please check the below code
 

@@ -185,7 +185,7 @@ class FetchDataView(APIView):
         else:
             data = self.prepare_datasets(sgpc, req_names, req_datasets, req_history, req_categories)
 
-        print("data", data)
+        # print("data", data)
 
         response = JsonResponse(data, safe=False)
 
@@ -890,10 +890,18 @@ def find_subclasses(sgpc: SGPC):
     fetched results from the wikidata endpoint.
     """
     headers = []
+    
     for sgp in sgpc.associated_sgprojects.all():
+        col_types = sgp_get_col_types(sgp)
         for i, entry in enumerate(sgp.provenanceRecord['0']['selection']['mapping'].values()):
-            label = sgp.provenanceRecord['0']['selection']['child'][str(i)]
-            headers.append([label, entry])
+            # We only create subclass mapping forcolumn with type of STRING
+            if col_types[i] == "String":
+                label = sgp.provenanceRecord['0']['selection']['child'][str(i)]
+                headers.append([label, entry])
+            else:
+                # TODO: act accordingly
+                pass
+
     result = findsubclasses.main(headers, "")
 
     counter = 0
@@ -904,8 +912,18 @@ def find_subclasses(sgpc: SGPC):
                       'o': parent, 'olabel': result[s]['parentlabel'][i]}
             subclasses_to_save[str(counter)] = helper
             counter += 1
+    
+    # this list has duplicated values. to remove duplicated, we do:
 
-    sgpc.subclassMappings = subclasses_to_save
+    subclasses_to_save_unique = {}
+
+    for key,value in subclasses_to_save.items():
+        if value not in subclasses_to_save_unique.values():
+            subclasses_to_save_unique[key] = value
+
+    # print ("***** subclasses_to_save NO duplicated", subclasses_to_save_unique)
+
+    sgpc.subclassMappings = subclasses_to_save_unique
     sgpc.save()
 
 
@@ -1077,7 +1095,7 @@ def get_collection_names(request):
     Returns all disctinct bioproject names.
     """
 
-    print("get_all_collection_names", SGPC.get_all_collection_names())
+    # print("get_all_collection_names", SGPC.get_all_collection_names())
 
     response = JsonResponse({"collectionnames": SGPC.get_all_collection_names()})
     return response
@@ -1097,7 +1115,7 @@ class QueryTemplate(APIView):
         for sgp in sgpc.associated_sgprojects.all():
             data = sgp.provenanceRecord["0"]["selection"]
             original_header = sgp.original_table_header
-            print("original_header", original_header)
+            # print("original_header", original_header)
             safe_querymetadata(data, original_header, proj_name)
             sgp_append_querybuilding_step(sgp)
 
@@ -1313,9 +1331,9 @@ class GenerateTTL(APIView):
             cea_file_path = sgp_get_mapping_file(sgp)
             col_types = sgp_get_col_types(sgp)
 
-            print("original_file_path", original_file_path)
-            print("cea_file_path", cea_file_path)
-            print("col_types", col_types)
+            # print("original_file_path", original_file_path)
+            # print("cea_file_path", cea_file_path)
+            # print("col_types", col_types)
 
             original_df = pd.read_csv(original_file_path.file_field.path)
             cea_df = pd.read_csv(cea_file_path.file_field.path)
@@ -1327,9 +1345,16 @@ class GenerateTTL(APIView):
 
             header_labels = list(original_df.columns)
             for i, mapping in enumerate(header_mapping):
-                self.add_class(g, sgpc_pk, mapping, label=header_labels[i])
+                # if the column type is string we define a class for that
+                if col_types[i] == "String": 
+                    self.add_class(g, sgpc_pk, mapping, label=header_labels[i])
+                else:
+                    # TODO: define datatype for columns with numerical values
+                    pass
 
-            # dd properties
+                
+
+            # dd properties - @Suresh: what does this do?
             for i in range(len(original_df.columns)):
                 col = original_df.iloc[:, i]
                 mapping_col = cea_df.iloc[:, i]
@@ -1342,14 +1367,13 @@ class GenerateTTL(APIView):
 
             self.add_SubClass_Mappings(g, sgpc_pk, sgpc.subclassMappings)
 
-            # add properties
+            # add properties - user defined ones
             for mapping in sgpc.cpaMappings.values():
                 print("maping", mapping)
-                oIndex_from_original_columns = list(sgp.provenanceRecord["0"]["selection"]["child"].values()).index(mapping[5])
+                oIndex_from_original_columns = list(sgp.provenanceRecord["0"]["selection"]["child"].values()).index(mapping[5])   
                 #original_df.columns.tolist().index(mapping[5])
                 typeof_oIndex = sgp.provenanceRecord["0"]["selection"]["type"][str(oIndex_from_original_columns)]
                 self.add_properties(g, sgpc_pk, mapping[2], typeof_oIndex, mapping[3])
-                
                 
 
             sgp_append_downloading_step(sgp)
@@ -1540,6 +1564,7 @@ class TTL_to_blazegraph(APIView):
         collection_name = "sgpc_" + str(sgpc.pk) + "_" + sgpc.bioprojectname
         sgpc.collectionname = collection_name
         sgpc.createdAt = date.today()
+        #TODO: sgpc.createdBy = get user info from 
         sgpc.save()
         collection_name_url = "https://planthub.idiv.de/iknow/" + collection_name + ".org"
         # url = "http://localhost:9999/blazegraph/namespace/kb/sparql?context-uri=" + collection_name_url
@@ -1596,13 +1621,13 @@ def fetch_provenance_blazegraph(myQueryText):
     url = settings.BLAZEGRAPH_URL + 'bigdata/sparql'
 
     # url = 'http://localhost:9999/blazegraph/namespace/kb/sparql'
-    print('url is:: from models.py ', url)
+    # print('url is:: from models.py ', url)
 
     headers = {
         'Accept': 'application/sparql-results+json,text/turtle'
     }
-    print('******we are prinitng content of new query')
-    print(sparql_query2(myQueryText))
+    # print('******we are prinitng content of new query')
+    # print(sparql_query2(myQueryText))
     params = {'query': sparql_query2(myQueryText)}
     response = requests.get(url=url, params=params, data=None, headers=headers)
     return json.loads(response.content)
@@ -1617,22 +1642,21 @@ class FetchProvenance(APIView):
         # get queryText
         x: dict = json.loads(request.body)["queryText"]
         json_content = fetch_provenance_blazegraph(x)
-        # print('------------------------json_content-----------------------------')
-        # json_content = {"content": "abc"}
-        # print('-----------query result')
-
+        # print('------------------------json_content in Find Provenance-----------------------')
         # print("json_content", json_content)
+
         list_of_collectionsID = []
         for binding in json_content["results"]["bindings"]:
             get_sgpcID = binding['o']["value"].split("_")[1]
             list_of_collectionsID.append(get_sgpcID)
 
         sgpc_collections_info = sgpc_info_by_collection_name(list_of_collectionsID)
-        print("sgc_collections_info", sgpc_collections_info)
+        # print("sgc_collections_info", sgpc_collections_info)
 
         response = HttpResponse({"tabledata": sgpc_collections_info})
         response['Content-Disposition'] = 'attachment; filename="results.json"'
         # print(type(json_content))
+
         return response
 
 
