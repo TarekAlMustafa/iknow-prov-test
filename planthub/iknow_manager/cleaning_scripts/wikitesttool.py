@@ -145,7 +145,8 @@ def progress_column(column, OUTPUT_FILE, NUM_QUERY_ENTITIES):
             save_progress(get_wikidata_entities(label_collector), OUTPUT_FILE, NUM_QUERY_ENTITIES)
 
 
-def jsonResult_to_list(json, row_length: int, bin_col_types):
+# def jsonResult_to_list(json, row_length: int, bin_col_types):
+def jsonResult_to_list(json, bin_col_types):
     # building helper list to store ordered results
     helper = []
     for x in range(len(json['head']['vars'])):
