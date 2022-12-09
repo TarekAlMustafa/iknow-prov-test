@@ -1009,6 +1009,7 @@ def get_sgpc_info(request):
     """
     Returns list with information about all sgpcs.
     """
+    print (" I am in get all-sgpc-info")
     response = JsonResponse({"tabledata": sgpc_info()})
 
     return response
@@ -1032,6 +1033,7 @@ def get_sgpc_provenance(request):
     Returns information about all phases in the provenance record
     of all sgps in a sgpc.
     """
+    print ("I am in get fetch-collection-provenance")
     sgpc_pk = request.GET.get('sgpc_pk', default=None)
     sgpc = sgpc_from_key(sgpc_pk)
 
@@ -1618,6 +1620,7 @@ def sparql_query2(myQueryText):
 def fetch_provenance_blazegraph(myQueryText):
 
     url = settings.BLAZEGRAPH_URL + 'bigdata/sparql'
+    print (url)
 
     # url = 'http://localhost:9999/blazegraph/namespace/kb/sparql'
     # print('url is:: from models.py ', url)
@@ -1637,12 +1640,12 @@ class FetchProvenance(APIView):
         """
         Finds all sgpc's based on the queryText provided
         """
-
+        print ('***************I am in FetchProvenance')
         # get queryText
         x: dict = json.loads(request.body)["queryText"]
         json_content = fetch_provenance_blazegraph(x)
-        # print('------------------------json_content in Find Provenance-----------------------')
-        # print("json_content", json_content)
+        print('------------------------json_content in Find Provenance-----------------------')
+        print("json_content", json_content)
 
         list_of_collectionsID = []
         for binding in json_content["results"]["bindings"]:
@@ -1650,11 +1653,13 @@ class FetchProvenance(APIView):
             list_of_collectionsID.append(get_sgpcID)
 
         sgpc_collections_info = sgpc_info_by_collection_name(list_of_collectionsID)
-        # print("sgc_collections_info", sgpc_collections_info)
+        print("----------sgc_collections_info", sgpc_collections_info)
 
         response = HttpResponse({"tabledata": sgpc_collections_info})
         response['Content-Disposition'] = 'attachment; filename="results.json"'
         # print(type(json_content))
+        print ('+++ response before retrun', response)
+        print ('+++ json_content before retrun', json_content)
 
         return response
 
