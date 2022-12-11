@@ -8,18 +8,19 @@ import pandas as pd
 import xarray as xr
 
 key_col = 'AccSpeciesName'
-file_name_input = 'PhenObs_2022-02-28 (1).csv'
-output_name = "Phenobs"
+file_name_input = ''
+output_name = ''
 
-file_name_genera = 'PlantHub genera_2022-05-13_v3.csv'
-file_name_families = 'PlantHub families_2022-05-10.csv'
-file_name_order = 'PlantHub orders_2022-05-10.csv'
+file_name_genera = 'PlantHub genera_2022-11-30'
+file_name_families = 'PlantHub families_2022-11-30'
+file_name_order = 'PlantHub orders_2022-11-30'
+
+df_data = []
 
 path = data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data', 'viz')
 # df_TRY=pd.read_csv('TRY data_2021-12-10.csv', encoding='unicode_escape',low_memory=False)
 # df_data = pd.read_csv('TRY_2022-05-09', encoding='unicode_escape', low_memory=False)
-df_data = pd.read_csv(os.path.join(data_path, file_name_input),
-                      encoding='unicode_escape', low_memory=False)
+
 df_genera = pd.read_csv(os.path.join(data_path, file_name_genera),
                         encoding='UTF-8', low_memory=False, encoding_errors="replace")
 df_family = pd.read_csv(os.path.join(data_path, file_name_families),
@@ -76,10 +77,11 @@ def compute_number_of_crossings_xy(df: pd.DataFrame, name_of_df):
         ]
     )
 
+    bdf = df.notna()
     for i, x in enumerate(cols):
         for j, y in enumerate(cols):
             if i < j:
-                size = len(df[[x, y]].dropna())
+                size = (bdf[x] * bdf[y]).sum()
                 da.data[i, j] = da.data[j, i] = size
 
     da.to_netcdf(f'{name_of_df}_xy.nc')
@@ -89,7 +91,6 @@ def compute_number_of_crossings_xy(df: pd.DataFrame, name_of_df):
 def compute_number_of_crossings_xyz(df: pd.DataFrame, name_of_df: str):
     cols = df.columns
     n = len(cols)
-    print(n)
     da = xr.DataArray(
         np.zeros((n, n, n), dtype=int),
         [
@@ -101,6 +102,7 @@ def compute_number_of_crossings_xyz(df: pd.DataFrame, name_of_df: str):
     with xr.open_dataarray(f'{name_of_df}_xy.nc') as da_stored:
         da_stored.load()
 
+    bdf = df.notna()
     for i, x in enumerate(cols):
         for j, y in enumerate(cols):
             # The computation is very costly, so let's check whether there is at least the chance to find any plants.
@@ -108,7 +110,7 @@ def compute_number_of_crossings_xyz(df: pd.DataFrame, name_of_df: str):
             if da_stored.data[i, j] > 0:
                 for k, z in enumerate(cols):
                     if i < j < k:
-                        size = len(df[[x, y, z]].dropna())
+                        size = (bdf[x] * bdf[y] * bdf[z]).sum()
                         # Every possible order of x,y,z has the same size. Let's store it in every possible order
                         for order in list(itertools.permutations([i, j, k])):
                             da.data[order] = size
@@ -133,8 +135,8 @@ def compute_number_of_crossings_xyzw(df: pd.DataFrame, name_of_df: str):
     with xr.open_dataarray(f'{name_of_df}_xyz.nc') as da_stored:
         da_stored.load()
 
+    bdf = df.notna()
     for i, x in enumerate(cols):
-        print(i, n)
         for j, y in enumerate(cols):
             for k, z in enumerate(cols):
                 # The computation is very costly, so let's check whether there is at least
@@ -145,7 +147,7 @@ def compute_number_of_crossings_xyzw(df: pd.DataFrame, name_of_df: str):
                 if i < j < k and da_stored.data[i, j, k] > 0:
                     for a, w in enumerate(cols):
                         if i < j < k < a:
-                            size = len(df[[x, y, z, w]].dropna())
+                            size = (bdf[x] * bdf[y] * bdf[z] * bdf[w]).sum()
                             # Every possible order of x,y,z,w has the same size. Let's store it in every possible order
                             for order in list(itertools.permutations([i, j, k, a])):
                                 da.data[order] = size
@@ -209,7 +211,15 @@ def add_hierachry(df):
     return df_superorder
 
 
-def prepare_for_viz():
+def prepare_for_viz(file_name_input2, output_name2):
+    global file_name_input, output_name, df_data
+    print(file_name_input)
+    file_name_input = file_name_input2
+    output_name = output_name2
+
+    df_data = pd.read_csv(os.path.join(data_path, file_name_input),
+                          encoding='unicode_escape', low_memory=False)
+
     df_data_species = aggregate_dataframe_on_species(df_data)
 
     df_data_all = add_hierachry(df_data)
@@ -225,4 +235,8 @@ def prepare_for_viz():
     compute_number_of_crossings_xyzw(df_data_all_species, output_name + "_Species")
     prepare_dataframe_for_plotting_and_save_to_disk(df_data_all_species, output_name + "_Species")
 
-# prepare_for_viz()
+
+prepare_for_viz('PhenObs_2022-11-29', "PhenObs")
+prepare_for_viz('GloNAF_2022-09-12', "GloNAF")
+prepare_for_viz('sPlot_2022-09-14', "sPlot")
+prepare_for_viz('TRY_2022-11-14', "TRY")
