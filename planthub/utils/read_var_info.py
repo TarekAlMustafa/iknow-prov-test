@@ -3,15 +3,20 @@ The updated variable information is located in the data/viz/variable_table direc
 For now, the dataset names to be used are a global hardcoded constant, like in `read_data.py`.
 """
 
+import os
 from collections import defaultdict
 from pathlib import Path
 
 import pandas as pd
-import os
 
 DATASETS = ["TRY", "TRY_Species", "PhenObs", "PhenObs_Species"]
+
 PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz")
-NEW_PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz", "variable_table", "varinfo.pickle")
+
+NEW_PATH = os.path.join(
+    Path(__file__).resolve(strict=True).parent.parent,
+    "data", "viz", "variable_table", "varinfo.pickle"
+)
 
 # Original table of data
 data_frames: dict[str, pd.DataFrame] = {}
@@ -23,6 +28,7 @@ for dataset in DATASETS:
 
 # Updated table of metadata
 df = pd.read_pickle(NEW_PATH)
+
 
 def create_var_info() -> dict[str, list[pd.Series]]:
     """
@@ -65,6 +71,7 @@ def create_var_info() -> dict[str, list[pd.Series]]:
 
     return var_infos
 
+
 def create_all_cols(var_infos: dict[str, list[pd.Series]]) -> dict[str, list[pd.Series]]:
     """
     Parses table of data and updated table of metadata and checks whether variable IDs are missing.
@@ -74,7 +81,7 @@ def create_all_cols(var_infos: dict[str, list[pd.Series]]) -> dict[str, list[pd.
     :param var_infos: new variable information (metadata)
     :return: dict of variables contained in both tables
     """
-    
+
     # TODO: Make the "variable not found" checks raise exceptions instead of printing
 
     columns = defaultdict(list)
@@ -86,7 +93,7 @@ def create_all_cols(var_infos: dict[str, list[pd.Series]]) -> dict[str, list[pd.
             if not any(item == variable_id for item in df["variable"].values):
                 print(variable_id, "of dataset", ds, "was not found")
                 # raise IndexError(variable_id, "of dataset", ds, "was not found")
-            
+
             # Otherwise, get the corresponding column from the data table
             for i in range(0, len(df["variable"].values)):
                 if df.loc[i].dataset != ds:
@@ -100,13 +107,13 @@ def create_all_cols(var_infos: dict[str, list[pd.Series]]) -> dict[str, list[pd.
         for var_info in var_infos[ds]:
             # List of columns from the current dataframe
             curr_columns = data_frames[ds].columns.values
-            
+
             # If the variable is missing from the current columns, raise an exception
             if not any(item == var_info.variable for item in curr_columns):
                 print(var_info.variable, "of dataset", ds, "was not found")
                 # raise IndexError(var_info.variable, "of dataset", ds, "was not found")
-            
-            # Otherwise, get the corresponding item from 
+
+            # Otherwise, get the corresponding item from
             for i in range(0, len(curr_columns)):
                 # Check whether the variable is already in the current list
                 if not any(series.variable == var_info.variable for series in columns[ds]):
@@ -115,7 +122,10 @@ def create_all_cols(var_infos: dict[str, list[pd.Series]]) -> dict[str, list[pd.
 
     return columns
 
-def create_cat_cont(columns: dict[str, list[pd.Series]]) -> tuple[dict[str, list[pd.Series]], dict[str, list[pd.Series]]]:
+
+def create_cat_cont(
+    columns: dict[str, list[pd.Series]]
+) -> tuple[dict[str, list[pd.Series]], dict[str, list[pd.Series]]]:
     """
     Creates dict of category columns and continuous columns (previously done in `read_data.py`)
 
@@ -134,7 +144,6 @@ def create_cat_cont(columns: dict[str, list[pd.Series]]) -> tuple[dict[str, list
             if data_frames[ds][col.variable].dtype.name in ["object", "category"]
         ]
 
-
     # The continuous columns consist of all columns which are not in `cat_cols` and in addition,
     # must not contain the variable `ObservationID`
     for ds in DATASETS:
@@ -150,10 +159,10 @@ def create_cat_cont(columns: dict[str, list[pd.Series]]) -> tuple[dict[str, list
 def main() -> None:
     """
     Example usage of `read_var_info.py`
-    
+
     For actual usage, see `cols.py`
     """
-    
+
     var_infos = create_var_info()
 
     try:

@@ -1,7 +1,8 @@
 import os
-from pathlib import Path
 import pickle
-from .read_var_info import create_var_info, create_all_cols, create_cat_cont
+from pathlib import Path
+
+from .read_var_info import create_all_cols, create_cat_cont, create_var_info
 
 SAVE_PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz", "variable_table")
 
@@ -14,15 +15,14 @@ try:
 
     with open(SAVE_PATH + "/cat_cols.pickle", "wb") as catf:
         pickle.dump(CAT_COLS, catf)
-    
+
     with open(SAVE_PATH + "/cont_cols.pickle", "wb") as contf:
         pickle.dump(CONT_COLS, contf)
 except IndexError as ie:
     print(ie)
 except IOError as e:
-   print(f"I/O error({e.errno}): {e.strerror}")
-except:
-    print("An unexpected error occurred")
+    print(f"I/O error({e.errno}): {e.strerror}")
+
 
 """
 CAT_COLS = {
@@ -66,6 +66,7 @@ CONT_COLS = {
     ]
 }
 """
+
 
 def all_cols():
     allcols = []
