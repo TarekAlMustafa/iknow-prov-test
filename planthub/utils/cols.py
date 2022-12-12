@@ -1,6 +1,30 @@
-# TODO: Read excel table and convert to dataframe (.pickle) in /data
-# TODO: Use dataframe instead of CAT_COLS and CONT_COLS
+import os
+from pathlib import Path
+import pickle
+from .read_var_info import create_var_info, create_all_cols, create_cat_cont
 
+SAVE_PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz", "variable_table")
+
+var_infos = create_var_info()
+
+# Generate CAT_COLS and CONT_COLS and save them as .pickle files within data/viz/variable_table
+try:
+    columns = create_all_cols(var_infos)
+    CAT_COLS, CONT_COLS = create_cat_cont(columns)
+
+    with open(SAVE_PATH + "/cat_cols.pickle", "wb") as catf:
+        pickle.dump(CAT_COLS, catf)
+    
+    with open(SAVE_PATH + "/cont_cols.pickle", "wb") as contf:
+        pickle.dump(CONT_COLS, contf)
+except IndexError as ie:
+    print(ie)
+except IOError as e:
+   print(f"I/O error({e.errno}): {e.strerror}")
+except:
+    print("An unexpected error occurred")
+
+"""
 CAT_COLS = {
     "TRY": [
         ("AccFamily", "AccFamily", "AccFamily DE", "Description"),
@@ -41,7 +65,7 @@ CONT_COLS = {
         ("veg_height_garden_cm", "veg_height_garden_cm", "veg_height_garden_cm DE", "Description")
     ]
 }
-
+"""
 
 def all_cols():
     allcols = []
