@@ -1,14 +1,103 @@
-# from elasticsearch import Elasticsearch
-from elasticsearch_dsl import FacetedSearch, NestedFacet, Q, TermsFacet, connections
-
-# from elasticsearch import TransportError
-from .create_index import PlantHubDatasetsIndex
+from elasticsearch_dsl import (
+    Completion,
+    Document,
+    FacetedSearch,
+    Integer,
+    Keyword,
+    Nested,
+    NestedFacet,
+    Q,
+    SearchAsYouType,
+    TermsFacet,
+    Text,
+    connections,
+)
 
 # Connect with es on port
 # Todo error handling if not available
 
 
 connections.create_connection(hosts=['localhost:9200'], timeout=20)
+
+
+class PlantHubDatasetsIndex(Document):
+    title = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
+    dataset_id = Integer()
+    count = Integer()
+    species = Keyword()
+    subspecies = Keyword()
+    genus = Keyword()
+    family = Keyword()
+    order = Keyword()
+    superorder = Keyword()
+    subclass = Keyword()
+    class1 = Keyword()
+
+    variables = Nested(
+        multi=True,
+        properties={
+            'name_full': Text(fielddata=True, fields={'keyword': Keyword()}),
+            'type': Text(fielddata=True, fields={'keyword': Keyword()}),
+            'subtype': Text(fielddata=True, fields={'keyword': Keyword()}),
+        }
+    )
+
+    class Index:
+        name = "planthub_datasets_index"
+        settings = {"number_of_shards": 1, "number_of_replicas": 0}
+
+
+class PlantHubSpeciesIndex(Document):
+    taxon_name = Completion(contexts=[{"name": "taxon_rank", "type": "category", "path": "taxon_rank"}])
+    taxon_rank = Keyword()
+    translation = Nested(
+        multi=True,
+        properties={
+            'name': Text(fielddata=True, fields={'completion': Completion()}),
+            'lang': Text(fielddata=True, fields={'keyword': Keyword()}),
+            'taxon_name': Keyword(),
+            'taxon_rank': Keyword()
+        }
+    )
+
+    other_keywords = Nested(
+        multi=True,
+        properties={
+            'name': Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()}),
+        }
+    )
+
+    class Index:
+        name = "planthub_species_index"
+        settings = {"number_of_shards": 1, "number_of_replicas": 0}
+
+
+class PlantHubVariableIndex(Document):
+    variable_name = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion(),
+                                                 'search_as_you_type': SearchAsYouType(max_shingle_size=3)})
+    variable_description = Text()
+    variable_type = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
+    variable_subtype = Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()})
+
+    translation = Nested(
+        multi=True,
+        properties={
+            'name': Text(fielddata=True, fields={'completion': Completion()}),
+            'lang': Text(fielddata=True, fields={'keyword': Keyword()}),
+            'ref_variable_name': Keyword()
+        }
+    )
+
+    other_keywords = Nested(
+        multi=True,
+        properties={
+            'name': Text(fielddata=True, fields={'keyword': Keyword(), 'completion': Completion()}),
+        }
+    )
+
+    class Index:
+        name = "planthub_variables_index"
+        settings = {"number_of_shards": 1, "number_of_replicas": 0}
 
 
 class PlantHubSearch(FacetedSearch):
@@ -84,4 +173,9 @@ class PlantHubSearch(FacetedSearch):
                     'term', **d
                 ))
 
+        search_query.aggs.bucket('Observation_count_by_dataset', 'terms', field='title', size=1000)\
+            .metric('count_observ', 'sum', field='count')
+        search_query.aggs.bucket('Observation_count_by_variable', 'nested', path='variables')\
+            .bucket('Observation_count_by_variable2', 'terms', field='variables.name_full', size=1000)\
+            .bucket('all_queries', 'reverse_nested').metric('count_observ', 'sum', field='count')
         return search_query
