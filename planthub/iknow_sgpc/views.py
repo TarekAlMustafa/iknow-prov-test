@@ -49,7 +49,7 @@ def sgpc_create(request):
         if not BioProject.name_exists(choice):
             newProject = BioProject()
             newProject.name = choice
-            new_collection.createdBy = userName  # TODO error handling: new_collection can be not defined
+            newProject.createdBy = userName
             newProject.save()
 
         new_collection = SGPC()

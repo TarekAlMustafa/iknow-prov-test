@@ -15,7 +15,7 @@ from planthub.iknow_sgp.models import SGP
 class BioProject(models.Model):
     name = models.CharField(max_length=1023, unique=True, default='', blank=True, null=True)
 
-    def get_all_project_names(self):
+    def get_all_project_names():
         info = [['--select one--']]
 
         distinct_names = BioProject.objects.values('name').distinct()

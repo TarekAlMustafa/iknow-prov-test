@@ -28,8 +28,8 @@ from planthub.iknow_manager.models import (
     get_property_url_by_label,
     safe_querymetadata,
     save_cpamappings,
-    save_IKNOWclass,
-    save_IKNOWproperty,
+    save_iknow_class,
+    save_iknow_property,
 )
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
@@ -1606,10 +1606,10 @@ class TTL_to_blazegraph(APIView):
         for sgp in sgpc.associated_sgprojects.all():
             for (i, header) in sgp.provenanceRecord["0"]["selection"]["child"].items():
                 headerUri = sgp.provenanceRecord["0"]["selection"]["mapping"][i]
-                save_IKNOWclass(header, headerUri)
+                save_iknow_class(header, headerUri)
 
         for cpaMap in sgpc.cpaMappings.values():
-            save_IKNOWproperty(cpaMap[3], cpaMap[2])
+            save_iknow_property(cpaMap[3], cpaMap[2])
 
 
 def sparql_query2(myQueryText):
