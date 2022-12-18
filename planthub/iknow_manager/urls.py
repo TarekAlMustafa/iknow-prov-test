@@ -12,21 +12,21 @@ from .views import (
     EditSchemaView,
     FetchCpaView,
     FetchDataView,
+    FetchProvenance,
     FetchSubclassesView,
+    GenerateTTL,
     LinkingView,
+    QueryTemplate,
     RerunView,
+    TTL_to_blazegraph,
     UndoSgpcView,
     UploadToSgpcView,
+    download_sgpc_provenance,
     get_bioproject_names,
     get_collection_names,
+    get_history,
     get_sgpc_info,
     get_sgpc_provenance,
-    download_sgpc_provenance,
-    QueryTemplate,
-    GenerateTTL,
-    TTL_to_blazegraph,
-    FetchProvenance,
-    get_history
 )
 
 urlpatterns = [

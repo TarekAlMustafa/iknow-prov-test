@@ -87,7 +87,7 @@ def dataset_from_key(key: str):
     if key is None:
         return False
 
-    # get SGP istance
+    # get SGP instance
     try:
         dataset: Dataset = Dataset.objects.get(id=key)
     except ObjectDoesNotExist:

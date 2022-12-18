@@ -1,6 +1,8 @@
 # from django.conf import settings
-from django.db import models
 from datetime import date
+
+from django.db import models
+
 from planthub.iknow_sgp.models import SGP
 
 # Create your models here.
@@ -13,7 +15,7 @@ from planthub.iknow_sgp.models import SGP
 class BioProject(models.Model):
     name = models.CharField(max_length=1023, unique=True, default='', blank=True, null=True)
 
-    def get_all_project_names():
+    def get_all_project_names(self):
         info = [['--select one--']]
 
         distinct_names = BioProject.objects.values('name').distinct()
@@ -57,7 +59,7 @@ class SGPC(models.Model):
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)
 
-    def get_all_collection_names():
+    def get_all_collection_names(self):
         info = [['--select one--']]
 
         collection_names = SGPC.objects.values('collectionname')

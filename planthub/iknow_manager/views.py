@@ -1,44 +1,45 @@
 import json
-import requests
-import pandas as pd
 from datetime import date
+
+import pandas as pd
+import requests
+from django.conf import settings
 # from django.contrib.auth.decorators import login_required
 # from rest_framework import permissions
 from django.http import HttpResponse, JsonResponse
+from rdflib import Graph, Literal, Namespace, URIRef
+from rdflib.namespace import OWL, RDF, RDFS
 from rest_framework.decorators import api_view
 # from django.utils.decorators import method_decorator
 # from iknow_tools.views import get_all_tools_workflow_info
 from rest_framework.response import Response
-from django.conf import settings
 # from distutils.log import error
 # from django.db import models
 # from django.shortcuts import render
 from rest_framework.views import APIView
-from rdflib import Graph, Literal, Namespace, URIRef
-from rdflib.namespace import OWL, RDF, RDFS
 
 from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import create_filefield, handle_uploaded_file
 from planthub.iknow_manager.models import (
     CPAmapping,
     IknowEntity,
-    get_property_url_by_label,
     create_new_headerclass,
-    safe_querymetadata,
     get_all_headerclasses,
+    get_property_url_by_label,
+    safe_querymetadata,
     save_cpamappings,
     save_IKNOWclass,
-    save_IKNOWproperty
+    save_IKNOWproperty,
 )
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
     sgp_append_cpa_step,
+    sgp_append_downloading_step,
     sgp_append_init_step,
     sgp_append_linking_step,
     sgp_append_mapping_step,
-    sgp_append_schema_step,
     sgp_append_querybuilding_step,
-    sgp_append_downloading_step,
+    sgp_append_schema_step,
     sgp_create,
     sgp_edit_mapping,
     sgp_from_key,
@@ -78,6 +79,7 @@ IKNOW_NAMESPACE = "https://planthub.idiv.de/iknow/wiki/"
 
 jr_error = JsonResponse({"msg": "error"})
 jr_error_message = {"msg": "error"}
+
 
 # everything about REQUEST HANDLING in django
 # https://docs.djangoproject.com/en/4.0/ref/request-response/
@@ -383,7 +385,6 @@ class CleaningView(APIView):
 
 # use custom response class to override HttpResponse.close()
 class LinkingtoolsResponse(HttpResponse):
-
     PROCESS_DATA = []
 
     def close(self):
@@ -1009,7 +1010,7 @@ def get_sgpc_info(request):
     """
     Returns list with information about all sgpcs.
     """
-    print (" I am in get all-sgpc-info")
+    print(" I am in get all-sgpc-info")
     response = JsonResponse({"tabledata": sgpc_info()})
 
     return response
@@ -1033,7 +1034,7 @@ def get_sgpc_provenance(request):
     Returns information about all phases in the provenance record
     of all sgps in a sgpc.
     """
-    print ("I am in get fetch-collection-provenance")
+    print("I am in get fetch-collection-provenance")
     sgpc_pk = request.GET.get('sgpc_pk', default=None)
     sgpc = sgpc_from_key(sgpc_pk)
 
@@ -1154,7 +1155,7 @@ class GenerateTTL(APIView):
         g.add((
             URIRef(f"{self.IKNOW_RO}"),
             RDFS.seeAlso,
-            Literal("sgpc_"+sgpcID)
+            Literal("sgpc_" + sgpcID)
         ))
 
     def get_entites_uri(self, g, label=""):
@@ -1174,7 +1175,7 @@ class GenerateTTL(APIView):
                 url = wiki_url + wikibase_item
                 return url
             else:
-                return iknow_url+"C50"
+                return iknow_url + "C50"
 
     def add_class(self, g, sgpcID, uri, label=""):
         """
@@ -1187,7 +1188,7 @@ class GenerateTTL(APIView):
         if label != "":
             g.add((subject, RDFS.label, Literal(label)))
 
-        g.add((subject, RDFS.seeAlso, Literal("sgpc_"+sgpcID)))
+        g.add((subject, RDFS.seeAlso, Literal("sgpc_" + sgpcID)))
 
     def add_entities_string(self, g, column, mapping_column, header_class):
         """
@@ -1220,7 +1221,7 @@ class GenerateTTL(APIView):
         if label != "":
             g.add((subject, RDFS.label, Literal(label)))
 
-        g.add((subject, RDFS.seeAlso, Literal("sgpc_"+sgpcID)))
+        g.add((subject, RDFS.seeAlso, Literal("sgpc_" + sgpcID)))
 
     def add_row_obseration(self, g, sgpc, sgpcID, original_row, cea_row, col_types, header_labels, row_obs_properties):
         """
@@ -1253,7 +1254,7 @@ class GenerateTTL(APIView):
             g.add((
                 URIRef(f"{self.IKNOW_RO}_sgpc_{sgpcID}_{row_observation_index}"),
                 RDFS.seeAlso,
-                Literal("sgpc_"+sgpcID)
+                Literal("sgpc_" + sgpcID)
             ))
 
             if col_types[i] == "String":
@@ -1295,7 +1296,7 @@ class GenerateTTL(APIView):
             g.add((
                 URIRef(subClassMap['o']),
                 RDFS.seeAlso,
-                Literal("sgpc_"+sgpcID),
+                Literal("sgpc_" + sgpcID),
             ))
 
     def main(self, g, sgpc_pk, dformat, ro_startingindex=0, property_stratingIndex=10):
@@ -1510,10 +1511,10 @@ class GenerateTTL(APIView):
     #         https://docs.djangoproject.com/en/4.1/ref/models/querysets/#get-or-create
     #         which is already used in some places of the backend
 
-# https://planthub.idiv.de/iknow/wiki/ - namespace
-# https://planthub.idiv.de/iknow/wiki/C1 - classes
-# https://planthub.idiv.de/iknow/wiki/P1 - property
-# https://planthub.idiv.de/iknow/wiki/E1 - entitiy
+    # https://planthub.idiv.de/iknow/wiki/ - namespace
+    # https://planthub.idiv.de/iknow/wiki/C1 - classes
+    # https://planthub.idiv.de/iknow/wiki/P1 - property
+    # https://planthub.idiv.de/iknow/wiki/E1 - entitiy
 
     def get(self, request):
         """
@@ -1542,8 +1543,9 @@ class GenerateTTL(APIView):
         if dformat == 'json-ld':
             dformat = 'json'
 
-        response['Content-Disposition'] = 'attachment; filename="results.'+dformat
+        response['Content-Disposition'] = 'attachment; filename="results.' + dformat
         return response
+
 
 # Blazegraph running
 # install docker from the below link
@@ -1612,15 +1614,14 @@ class TTL_to_blazegraph(APIView):
 
 def sparql_query2(myQueryText):
     # test = "SELECT DISTINCT * WHERE {    ?s ?p ?o .  FILTER (strstarts(str(?o),'"+ myQueryText+"'))}LIMIT 1000"
-    query = "SELECT DISTINCT ?o  WHERE {   ?s rdfs:seeAlso ?o .  ?s rdfs:label '"+myQueryText+"' }"
+    query = "SELECT DISTINCT ?o  WHERE {   ?s rdfs:seeAlso ?o .  ?s rdfs:label '" + myQueryText + "' }"
     # TODO: correct the query
     return query
 
 
 def fetch_provenance_blazegraph(myQueryText):
-
     url = settings.BLAZEGRAPH_URL + 'bigdata/sparql'
-    print (url)
+    print(url)
 
     # url = 'http://localhost:9999/blazegraph/namespace/kb/sparql'
     # print('url is:: from models.py ', url)
@@ -1640,7 +1641,7 @@ class FetchProvenance(APIView):
         """
         Finds all sgpc's based on the queryText provided
         """
-        print ('***************I am in FetchProvenance')
+        print('***************I am in FetchProvenance')
         # get queryText
         x: dict = json.loads(request.body)["queryText"]
         json_content = fetch_provenance_blazegraph(x)
@@ -1658,8 +1659,8 @@ class FetchProvenance(APIView):
         response = HttpResponse({"tabledata": sgpc_collections_info})
         response['Content-Disposition'] = 'attachment; filename="results.json"'
         # print(type(json_content))
-        print ('+++ response before retrun', response)
-        print ('+++ json_content before retrun', json_content)
+        print('+++ response before return', response)
+        print('+++ json_content before return', json_content)
 
         return response
 

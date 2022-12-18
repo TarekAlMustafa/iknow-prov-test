@@ -1,6 +1,5 @@
 # from django.db import models
-from django.db import models
-from django.db import IntegrityError
+from django.db import IntegrityError, models
 
 
 class CPAmapping(models.Model):
@@ -127,22 +126,22 @@ def save_cpamappings(cpamappings):
             pass
 
 
-def save_IKNOWclass(iknowclasslabel, iknowclassuri):
-    new_iknowclass = IKNOWclass()
-    new_iknowclass.uri = iknowclassuri
-    new_iknowclass.label = iknowclasslabel
+def save_iknow_class(iknow_class_label, iknow_class_uri):
+    new_iknow_class = IKNOWclass()
+    new_iknow_class.uri = iknow_class_uri
+    new_iknow_class.label = iknow_class_label
     try:
-        new_iknowclass.save()
+        new_iknow_class.save()
     except IntegrityError:
         pass
 
 
-def save_IKNOWproperty(iknowpropertylabel, iknowpropertyuri):
-    new_iknowproperty = IKNOWproperty()
-    new_iknowproperty.uri = iknowpropertyuri
-    new_iknowproperty.label = iknowpropertylabel
+def save_iknow_property(iknow_property_label, iknow_property_uri):
+    new_iknow_property = IKNOWproperty()
+    new_iknow_property.uri = iknow_property_uri
+    new_iknow_property.label = iknow_property_label
     try:
-        new_iknowproperty.save()
+        new_iknow_property.save()
     except IntegrityError:
         pass
 

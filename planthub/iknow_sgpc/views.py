@@ -3,6 +3,12 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import JsonResponse
 
+# from planthub.iknow_manager.cleaning_scripts.wikitesttool import (
+#     build_query,
+#     get_wikidata_entities,
+#     jsonResult_to_list,
+# )
+from planthub.iknow_manager.models import get_property_url_by_label
 from planthub.iknow_sgp.models import SGP
 from planthub.iknow_sgp.views import (
     sgp_append_cpa_step,
@@ -10,10 +16,6 @@ from planthub.iknow_sgp.views import (
     sgp_in_progress,
     sgp_replace_mapping_file_with_copy,
 )
-
-from planthub.iknow_manager.models import get_property_url_by_label
-
-from planthub.iknow_manager.cleaning_scripts.wikitesttool import jsonResult_to_list, get_wikidata_entities, build_query
 
 from .models import SGPC, BioProject
 
@@ -47,7 +49,7 @@ def sgpc_create(request):
         if not BioProject.name_exists(choice):
             newProject = BioProject()
             newProject.name = choice
-            new_collection.createdBy = userName
+            new_collection.createdBy = userName  # TODO error handling: new_collection can be not defined
             newProject.save()
 
         new_collection = SGPC()
@@ -90,7 +92,7 @@ def sgpc_info():
     return info
 
 
-def sgpc_info_by_collection_name(list_of_collectionsID):
+def sgpc_info_by_collection_name(list_of_collection_ids):
     """
     Returns information about all sgpc in the database,
     for the client to display and choose from.
@@ -100,9 +102,9 @@ def sgpc_info_by_collection_name(list_of_collectionsID):
 
     sgpc: SGPC
     for sgpc in SGPC.objects.all():
-        split_collectionname = sgpc.collectionname.split("_")
+        split_collection_name = sgpc.collectionname.split("_")
 
-        if len(split_collectionname) > 1 and split_collectionname[1] in list_of_collectionsID:
+        if len(split_collection_name) > 1 and split_collection_name[1] in list_of_collection_ids:
             info.append([sgpc.collectionname, sgpc.bioprojectname, sgpc.associated_sgprojects.all().count(), sgpc.pk])
 
     return info
@@ -276,7 +278,7 @@ def sgpc_copy(sgpc: SGPC):
     return sgpc
 
 
-def sgpc_append_editCpa_step(sgpc: SGPC, deletions: dict, additions: dict):
+def sgpc_append_edit_cpa_step(sgpc: SGPC, deletions: dict, additions: dict):
     """
     Appends information of user edits on the cpa-mappings,
     to the provenance record of the sgpc.
@@ -307,7 +309,7 @@ def sgpc_append_schema_step(sgpc: SGPC, deletions: dict, additions: dict):
 def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
     """
     Applies user edits of cpa-mappings so the field
-    in the sgpc. Then calls sgpc_append_editCpa_step().
+    in the sgpc. Then calls sgpc_append_edit_cpa_step().
     """
     mapping_copy = sgpc.cpaMappings
 
@@ -353,10 +355,11 @@ def sgpc_edit_cpa(sgpc: SGPC, edits: dict):
         if pUrl is None:
             pUrl = f"https://planthub.idiv.de/iknow/wiki/P{str(sgpc.id)}_{str(next_key)}"
 
+        # TODO add error handling if sURL,sLabel, oURL, oLabel are empty / or define before
         mapping_copy[next_key] = [sUrl, sLabel, pUrl, value['p'], oUrl, oLabel]
 
     sgpc.cpaMappings = mapping_copy
-    sgpc_append_editCpa_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
+    sgpc_append_edit_cpa_step(sgpc, deletions=edits['deleted'], additions=edits['added'])
 
     for sgp in sgpc.associated_sgprojects.all():
         sgp_append_cpa_step(sgp)

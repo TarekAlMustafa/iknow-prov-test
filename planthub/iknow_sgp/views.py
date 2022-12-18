@@ -286,14 +286,14 @@ def sgp_get_col_types(sgp: SGP, binary=False):
     for x in range(len(selections['type'].keys())):
         try:
             if binary:
-                type = selections['type'][str(x)]
-                if type == 'String':
+                selected_type = selections['type'][str(x)]
+                if selected_type == 'String':
                     col_types.append(1)
                 else:
                     col_types.append(0)
             else:
                 col_types.append(selections['type'][str(x)])
-        except (Exception):
+        except Exception:
             # Key not were its supposed to be in prov rec
             return False
 
@@ -366,7 +366,7 @@ def sgp_replace_mapping_file_with_copy(sgp: SGP):
             output_pk = phase['actions']['output']
             try:
                 old_dataset = Dataset.objects.get(pk=output_pk)
-            except (ObjectDoesNotExist):
+            except ObjectDoesNotExist:
                 break
 
             old_dataset.pk = None
