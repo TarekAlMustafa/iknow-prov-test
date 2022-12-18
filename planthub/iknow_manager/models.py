@@ -10,15 +10,30 @@ class CPAmapping(models.Model):
     o = models.CharField(max_length=4096)
     oLabel = models.CharField(max_length=4096)
 
+    class Meta:
+        # Add verbose name
+        verbose_name = 'CPA Mapping'
+        verbose_name_plural = 'CPA Mappings'
+
 
 class IKNOWproperty(models.Model):
     uri = models.CharField(unique=True, max_length=4096)
     label = models.CharField(max_length=4096)
 
+    class Meta:
+        # Add verbose name
+        verbose_name = 'iKNOW Property'
+        verbose_name_plural = 'iKNOW Properties'
+
 
 class IKNOWclass(models.Model):
     uri = models.CharField(unique=True, max_length=4096)
     label = models.CharField(max_length=4096)
+
+    class Meta:
+        # Add verbose name
+        verbose_name = 'iKNOW Class'
+        verbose_name_plural = 'iKNOW Classes'
 
 
 class HeaderClass(models.Model):
@@ -27,10 +42,20 @@ class HeaderClass(models.Model):
     sub_category_label = models.CharField(max_length=4096)
     sub_category_uri = models.CharField(unique=True, max_length=4096)
 
+    class Meta:
+        # Add verbose name
+        verbose_name = 'Header Class'
+        verbose_name_plural = 'Header Classes'
+
 
 class IknowEntity(models.Model):
     uri = models.CharField(max_length=10000, unique=True, null=True)
     label = models.CharField(max_length=4096, unique=True)
+
+    class Meta:
+        # Add verbose name
+        verbose_name = 'iKNOW Entity'
+        verbose_name_plural = 'iKNOW Entities'
 
 
 class QueryMetaData(models.Model):
@@ -42,6 +67,11 @@ class QueryMetaData(models.Model):
     column_URI = models.CharField(max_length=4096)
     value = models.CharField(max_length=4096)
     ui_element_type = models.CharField(max_length=4096)
+
+    class Meta:
+        # Add verbose name
+        verbose_name = 'Query Metadata'
+        verbose_name_plural = 'Query Metadata'
 
 
 def safe_querymetadata(data: dict, original_header: dict, proj_name: str):

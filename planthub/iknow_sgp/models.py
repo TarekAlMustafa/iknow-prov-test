@@ -28,3 +28,8 @@ class SGP(models.Model):
 
     # later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)
+
+    class Meta:
+        # Add verbose name
+        verbose_name = 'SGP (Subgraph Project)'
+        verbose_name_plural = 'SGP (Subgraph Projects)'

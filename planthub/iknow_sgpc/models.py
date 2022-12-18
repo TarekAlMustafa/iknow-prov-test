@@ -56,7 +56,12 @@ class SGPC(models.Model):
 
     createdAt = models.DateField(default=date.today)
 
-    # later for access control and displaying user specific database entries etc.
+    class Meta:
+        # Add verbose name
+        verbose_name = 'SGPC (Subgraph Project Collection)'
+        verbose_name_plural = 'SGPC (Subgraph Project Collections)'
+
+# later for access control and displaying user specific database entries etc.
     # owningUser = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, default=1)
 
     def get_all_collection_names(self):
