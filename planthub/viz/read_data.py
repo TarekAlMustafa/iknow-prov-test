@@ -1,7 +1,8 @@
 import os
+from pathlib import Path
+
 import pandas as pd
 import xarray as xr
-from pathlib import Path
 
 # path = str(settings.APPS_DIR) + "/viz/"
 path = data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data', 'viz')

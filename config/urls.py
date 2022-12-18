@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.conf.urls import url
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
@@ -19,13 +20,13 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     # Your stuff: custom urls includes go here
     # Datasets api
-    path('datasets/', include('planthub.datasets.urls', namespace="datasets")),
-    path('viz/', include('planthub.viz.urls', namespace="viz")),
+    path("datasets/", include("planthub.datasets.urls", namespace="datasets")),
+    path("viz/", include("planthub.viz.urls", namespace="viz")),
     path("django_plotly_dash/", include("django_plotly_dash.urls")),
     # Knowledge Graph query builder
     path("kg_query/", include("planthub.kg_query.urls")),
-    path('search/', include('planthub.search.urls', namespace="search")),
-    path('projects/', include('planthub.projects.urls', namespace="projects")),
+    path("search/", include("planthub.search.urls", namespace="search")),
+    path("projects/", include("planthub.projects.urls", namespace="projects")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:
@@ -38,6 +39,8 @@ urlpatterns += [
     path("api/", include("config.api_router")),
     # DRF auth token
     path("auth-token/", obtain_auth_token),
+    # IKNOW paths
+    url(r"^iknow/", include("planthub.iknow_manager.urls"), name="manager"),
 ]
 
 if settings.DEBUG:
