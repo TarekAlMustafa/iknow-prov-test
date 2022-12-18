@@ -104,4 +104,3 @@ deploy:
     #- npm run build
     - ssh deploy@iknow.inf-bb.uni-jena.de "cd /var/www/PlantHub/planthub && git config --global --add safe.directory /var/www/PlantHub/planthub &&  git pull  https://gitlab-ci-token:${CI_JOB_TOKEN}@git.uni-jena.de/fusion/project/planthub/planthub-website-backend.git && cd .. && source venv/bin/activate && cd planthub && pip install -r requirements/production.txt && python manage.py migrate && python manage.py collectstatic --noinput && touch config/wsgi.py"
     #- scp -P22 -r build/* deploy@iknow.inf-bb.uni-jena.de:/var/www/html
-
