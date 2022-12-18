@@ -1,0 +1,30 @@
+version: "3.7"
+services:
+
+  elastic:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.2
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "200k"
+        max-file: "10"
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      - discovery.type=single-node
+      - search.max_buckets=300000
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    
+  blazegraph:
+    image: metaphacts/blazegraph-basic:2.2.0-20160908.003514-6
+    ports:
+      - 8080:8080
+    volumes:
+      - blazegraph:/blazegraph-data
+      
+      
+volumes:
+    esdata:
+    blazegraph:
