@@ -83,7 +83,12 @@ LOCAL_APPS = [
     "planthub.viz.apps.VizConfig",
     'django_plotly_dash.apps.DjangoPlotlyDashConfig',
     "planthub.search.apps.SearchConfig",
-    "planthub.projects.apps.ProjectsConfig"
+    "planthub.projects.apps.ProjectsConfig",
+    "planthub.iknow_manager.apps.IknowManagerConfig",
+    "planthub.iknow_datasets.apps.IknowDatasetsConfig",
+    "planthub.iknow_sgp.apps.IknowSgpConfig",
+    "planthub.iknow_sgpc.apps.IknowSgpcConfig",
+    "planthub.iknow_tools.apps.IknowToolsConfig"
     # Your stuff: custom apps go here
 ]
 # https://docs.djangoproject.com/en/dev/ref/settings/#installed-apps
@@ -291,7 +296,7 @@ REST_FRAMEWORK = {
 }
 
 # django-cors-headers - https://github.com/adamchainz/django-cors-headers#setup
-CORS_URLS_REGEX = r"^/(api|users|datasets|viz|search|projects)/.*$"
+CORS_URLS_REGEX = r"^/(api|users|datasets|viz|search|projects|iknow)/.*$"
 
 # Your stuff...
 # ------------------------------------------------------------------------------
