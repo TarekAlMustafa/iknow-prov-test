@@ -6,7 +6,8 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CAT_COLS, CONT_COLS
+from planthub.utils.cat_cont_cols import CAT_COLS, CONT_COLS
+
 from .format import format_labels, get_cat_name
 from .read_data import (
     data_frames,
@@ -179,7 +180,7 @@ app.layout = html.Div(children=[
 )
 def update_x_cols(name_of_data_frame, old_value):
     """When the user chooses a new dataframe, this function updates the possible options and values for x
-     and color-column
+    and color-column
 
     :param name_of_data_frame:
     :return:
@@ -211,7 +212,6 @@ def update_y_cols(name_of_dataframe, x_col, old_value):
     :param old_value:
     :return:
     """
-
     cols = format_labels(name_of_dataframe, CONT_COLS, valid_cols=get_valid_second_column(name_of_dataframe, x_col))
 
     # In case the original y-value is still allowed, we keep it, else we just take any arbitrary allowed value
@@ -238,6 +238,7 @@ def filter_color_cats(name_of_dataframe, x_col, y_col, old_value):
             valid_cols=get_valid_third_column(name_of_dataframe, x_col, y_col))
         if i != "AccSpeciesName"
     ]
+
     # In case the original color-value is still allowed, we keep it, else we just take 'None'
     if old_value in [i['value'] for i in color_col_option]:
         new_value = old_value

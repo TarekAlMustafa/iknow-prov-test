@@ -1,13 +1,14 @@
 import colorcet as cc
 import dash_core_components as dcc
-import dash_html_components as html
 import numpy as np
 import plotly.express as px
+from dash import html
 from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CAT_COLS
+from planthub.utils.cat_cont_cols import CAT_COLS
+
 from .format import format_labels, get_cat_name
 from .read_data import data_frames, dataframe_options
 

@@ -7,7 +7,8 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CAT_COLS, CONT_COLS, all_cols
+from planthub.utils.cat_cont_cols import CAT_COLS, CONT_COLS, get_all_cols
+
 from .format import format_labels, format_z_values, get_cat_name, get_z_cat_name
 from .read_data import (
     data_frames,
@@ -47,7 +48,7 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan, log_x, log
         helper_df.columns = [
             get_cat_name(name_of_data_frame, x, CONT_COLS),
             get_cat_name(name_of_data_frame, y, CONT_COLS),
-            get_z_cat_name(all_cols(), z),
+            get_z_cat_name(get_all_cols(), z),
             "AccSpeciesName"
         ]
     else:
@@ -67,7 +68,7 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan, log_x, log
         helper_df.columns = [
             get_cat_name(name_of_data_frame, x, CONT_COLS),
             get_cat_name(name_of_data_frame, y, CONT_COLS),
-            get_z_cat_name(all_cols(), z),
+            get_z_cat_name(get_all_cols(), z),
             get_cat_name(name_of_data_frame, color, CAT_COLS),
             "AccSpeciesName"
         ]
@@ -76,7 +77,7 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan, log_x, log
     size = len(helper_df)
     kwargs['title'] = f'Scatterplot ({size} datapoints): {get_cat_name(name_of_data_frame, x, CONT_COLS)} ' \
                       f'vs. {get_cat_name(name_of_data_frame, y, CONT_COLS)} ' \
-                      f'vs.{get_cat_name(name_of_data_frame, z, CONT_COLS)}'
+                      f'vs.{get_z_cat_name(get_all_cols(), z)}'
 
     if size > 20000:
         helper_df = helper_df.sample(n=20000)
@@ -90,7 +91,7 @@ def create_scatter_plot(name_of_data_frame, x, y, z, color, show_nan, log_x, log
         helper_df,
         x=get_cat_name(name_of_data_frame, x, CONT_COLS),
         y=get_cat_name(name_of_data_frame, y, CONT_COLS),
-        z=get_z_cat_name(all_cols(), z),
+        z=get_z_cat_name(get_all_cols(), z),
         hover_name='AccSpeciesName',
         log_z=log_z,
         log_y=log_y,
@@ -263,6 +264,7 @@ def filter_y_values(name_of_dataframe, x_col, old_value):
     State('z-axis', 'value'),
 )
 def filter_z_values(name_of_dataframe, y_col, x_col, old_value):
+    # TODO: Switch y_col and x_col parameters ?
     # I also allow categorical values for the z-axis. If you think this is bad, feel free to change that
     cols = format_z_values(valid_cols=get_valid_third_column(name_of_dataframe, x_col, y_col))
     # In case the original z-value is still allowed, we keep it, else we just take any arbitrary allowed value
@@ -290,6 +292,7 @@ def filter_color_cats(name_of_dataframe, x_col, y_col, z_col, old_value):
             valid_cols=get_valid_fourth_column(name_of_dataframe, x_col, y_col, z_col))
         if i != "AccSpeciesName"
     ]
+
     # In case the original color-value is still allowed, we keep it, else we just take None
     if old_value in [i['value'] for i in color_col_option]:
         new_value = old_value

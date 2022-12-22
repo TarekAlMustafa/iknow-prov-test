@@ -1,9 +1,18 @@
+#!usr/bin/env python3
+
 """
-The updated variable information is located in the data/viz/variable_table directory.
+The updated variable metadata will be located in the data/viz/variable_table directory.
 For now, the dataset names to be used are a global hardcoded constant, like in `read_data.py`.
+
+TODO:
+    - Make `compare_tables()` throw exceptions in the case of mismatches
 """
 
+__author__ = "Yannick Brenning"
+__email__ = "yb63tadu@studserv.uni-leipzig.de"
+
 import os
+import pickle
 from collections import defaultdict
 from pathlib import Path
 
@@ -11,28 +20,38 @@ import pandas as pd
 
 DATASETS = ["TRY", "TRY_Species", "PhenObs", "PhenObs_Species"]
 
-PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz")
+DATA_PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz")
 
-NEW_PATH = os.path.join(
+SAVE_PATH = os.path.join(
+    Path(__file__).resolve(strict=True).parent.parent,
+    "data", "viz", "variable_table"
+)
+
+METADATA_PATH = os.path.join(
     Path(__file__).resolve(strict=True).parent.parent,
     "data", "viz", "variable_table", "varinfo.pickle"
 )
 
-# Original table of data
-data_frames: dict[str, pd.DataFrame] = {}
-for dataset in DATASETS:
-    try:
-        data_frames[dataset] = pd.read_pickle(os.path.join(PATH, dataset + '.pickle'))
-    except FileNotFoundError:
-        print(dataset, "not found.")
 
-# Updated table of metadata
-df = pd.read_pickle(NEW_PATH)
-
-
-def create_var_info() -> dict[str, list[pd.Series]]:
+def read_data_tables() -> dict[str, pd.DataFrame]:
     """
-    Read and process the variable information from a .pickle file.
+    Read the data from each dataset from .pickle files.
+
+    :return: dictionary mapping dataset names to corresponding dataframe
+    """
+    data_frames: dict[str, pd.DataFrame] = {}
+    for dataset in DATASETS:
+        try:
+            data_frames[dataset] = pd.read_pickle(os.path.join(DATA_PATH, dataset + '.pickle'))
+        except FileNotFoundError:
+            print(dataset, "not found.")
+
+    return data_frames
+
+
+def read_metadata_table() -> dict[str, list[pd.Series]]:
+    """
+    Read and process the variable information (metadata) from a .pickle file.
 
     All variable information is processed from a dataframe into a dictionary `var_infos`,
     which maps the name of each dataset to a list of all rows belonging to the dataset.
@@ -64,6 +83,7 @@ def create_var_info() -> dict[str, list[pd.Series]]:
 
     :return: dictionary mapping names of datasets to list of rows from dataset
     """
+    df = pd.read_pickle(METADATA_PATH)
 
     var_infos = {}
     for ds in DATASETS:
@@ -72,46 +92,45 @@ def create_var_info() -> dict[str, list[pd.Series]]:
     return var_infos
 
 
-def create_all_cols(var_infos: dict[str, list[pd.Series]]) -> dict[str, list[pd.Series]]:
+def compare_tables(
+    data: dict[str, pd.DataFrame],
+    metadata: dict[str, list[pd.Series]]
+) -> dict[str, list[pd.Series]]:
     """
     Parses table of data and updated table of metadata and checks whether variable IDs are missing.
 
-    In the case of a missing ID in either direction an `IndexError` is raised.
+    Missing IDs in either direction are printed onto the console.
+    Note: this should be done using exceptions in the future.
 
     :param var_infos: new variable information (metadata)
     :return: dict of variables contained in both tables
     """
-
-    # TODO: Make the "variable not found" checks raise exceptions instead of printing
-
     columns = defaultdict(list)
 
     for ds in DATASETS:
         # Compare original tables to new metadata table
-        for variable_id in data_frames[ds].columns.values:
+        for variable_id in data[ds].columns.values:
             # If it's not in the list of values, raise an exception
-            if not any(item == variable_id for item in df["variable"].values):
+            if not any(item == variable_id for item in [series.variable for series in metadata[ds]]):
                 print(variable_id, "of dataset", ds, "was not found")
-                # raise IndexError(variable_id, "of dataset", ds, "was not found")
+                continue
 
             # Otherwise, get the corresponding column from the data table
-            for i in range(0, len(df["variable"].values)):
-                if df.loc[i].dataset != ds:
-                    continue
-                if variable_id == df["variable"][i]:
-                    columns[ds].append(df.loc[i])
+            for i in range(0, len(metadata[ds])):
+                if variable_id == metadata[ds][i].variable:
+                    columns[ds].append(metadata[ds][i])
                     break
 
     # Compare new metadata table to original tables
     for ds in DATASETS:
-        for var_info in var_infos[ds]:
+        for var_info in metadata[ds]:
             # List of columns from the current dataframe
-            curr_columns = data_frames[ds].columns.values
+            curr_columns = data[ds].columns.values
 
             # If the variable is missing from the current columns, raise an exception
             if not any(item == var_info.variable for item in curr_columns):
                 print(var_info.variable, "of dataset", ds, "was not found")
-                # raise IndexError(var_info.variable, "of dataset", ds, "was not found")
+                continue
 
             # Otherwise, get the corresponding item from
             for i in range(0, len(curr_columns)):
@@ -124,24 +143,24 @@ def create_all_cols(var_infos: dict[str, list[pd.Series]]) -> dict[str, list[pd.
 
 
 def create_cat_cont(
-    columns: dict[str, list[pd.Series]]
+    columns: dict[str, list[pd.Series]],
+    data: dict[str, pd.DataFrame]
 ) -> tuple[dict[str, list[pd.Series]], dict[str, list[pd.Series]]]:
     """
-    Creates dict of category columns and continuous columns (previously done in `read_data.py`)
+    Creates dict of category columns and continuous columns (previously done in `read_data.py`).
 
     These are returned as a tuple and are meant to be unpacked directly when making the function call.
 
     :param columns: dictionary of columns from which to filter cats and conts
     :return: tuple of category columns and continuous columns
     """
-
     cat_cols, cont_cols = defaultdict(list), defaultdict(list)
 
     # Category columns consist of all columns which contain data of the type `object` or `category`
     for ds in DATASETS:
         cat_cols[ds] = [
             col for col in columns[ds]
-            if data_frames[ds][col.variable].dtype.name in ["object", "category"]
+            if data[ds][col.variable].dtype.name in ["object", "category"]
         ]
 
     # The continuous columns consist of all columns which are not in `cat_cols` and in addition,
@@ -156,20 +175,34 @@ def create_cat_cont(
     return cat_cols, cont_cols
 
 
-def main() -> None:
+def save_cat_cont() -> None:
     """
-    Example usage of `read_var_info.py`
-
-    For actual usage, see `cols.py`
+    Uses the functions above to save the category columns and continuous columns
+    in two .pickle files within the directory `SAVE_PATH`.
     """
 
-    var_infos = create_var_info()
+    data = read_data_tables()
+    metadata = read_metadata_table()
 
+    # Generate CAT_COLS and CONT_COLS and save them as .pickle files within data/viz/variable_table
     try:
-        columns = create_all_cols(var_infos)
-        cat_cols, cont_cols = create_cat_cont(columns)
-    except IndexError as ie:
-        print(ie)
+        columns = compare_tables(data, metadata)
+
+        CAT_COLS, CONT_COLS = create_cat_cont(columns, data)
+
+        with open(SAVE_PATH + "/cat_cols.pickle", "wb") as catf:
+            pickle.dump(CAT_COLS, catf)
+
+        with open(SAVE_PATH + "/cont_cols.pickle", "wb") as contf:
+            pickle.dump(CONT_COLS, contf)
+    except IndexError as e:
+        print(e)
+    except IOError as e:
+        print(f"I/O error({e.errno}): {e.strerror}")
+
+
+def main() -> None:
+    save_cat_cont()
 
 
 if __name__ == "__main__":

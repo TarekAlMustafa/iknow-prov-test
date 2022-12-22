@@ -6,13 +6,10 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CAT_COLS, CONT_COLS
+from planthub.utils.cat_cont_cols import CAT_COLS, CONT_COLS
+
 from .format import format_labels, get_cat_name
-from .read_data import (
-    data_frames,
-    dataframe_options,
-    get_valid_second_column,
-)
+from .read_data import data_frames, dataframe_options, get_valid_second_column
 
 app = DjangoDash('violin')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})

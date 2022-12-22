@@ -7,13 +7,10 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CAT_COLS
+from planthub.utils.cat_cont_cols import CAT_COLS
+
 from .format import format_labels, get_cat_name
-from .read_data import (
-    data_frames,
-    dataframe_options,
-    get_valid_second_column,
-)
+from .read_data import data_frames, dataframe_options, get_valid_second_column
 
 app = DjangoDash('bar')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
@@ -164,9 +161,11 @@ def update_col(name_of_dataframe, old_value):
     State('cat2', 'value'),
 )
 def update_second_col(name_of_dataframe, cat, old_value):
-    cols = format_labels(name_of_dataframe,
-                         CAT_COLS,
-                         valid_cols=get_valid_second_column(name_of_dataframe, cat))
+    cols = format_labels(
+        name_of_dataframe,
+        CAT_COLS,
+        valid_cols=get_valid_second_column(name_of_dataframe, cat)
+    )
 
     # In case the original second is still allowed, we keep it, else we do not use any color
     if old_value in [i['value'] for i in cols]:

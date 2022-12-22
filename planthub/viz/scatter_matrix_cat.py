@@ -7,7 +7,8 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CAT_COLS, CONT_COLS
+from planthub.utils.cat_cont_cols import CAT_COLS, CONT_COLS
+
 from .format import format_labels, get_cat_name
 from .read_data import (
     data_frames,
@@ -171,7 +172,7 @@ app.layout = html.Div(children=[
 )
 def update_possible_densities(name_of_data_frame, old_value):
     cols = format_labels(name_of_data_frame, CONT_COLS)
-    # cols = [{'label': i, 'value': i} for i in continuous_columns[name_of_data_frame]]
+
     # In case the original x-value is still allowed, we keep it, else we just take any arbitrary allowed value
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
@@ -190,8 +191,6 @@ def update_possible_densities(name_of_data_frame, old_value):
 def filter_y_values(name_of_dataframe, x_col, old_value):
     cols = format_labels(name_of_dataframe, CONT_COLS, valid_cols=get_valid_second_column(name_of_dataframe, x_col))
 
-    # cols = [{'label': i, 'value': i} for i in
-    #        get_valid_second_column(name_of_dataframe, x_col) if i in continuous_columns[name_of_dataframe]]
     # In case the original y-value is still allowed, we keep it, else we just take any arbitrary allowed value
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
@@ -210,12 +209,8 @@ def filter_y_values(name_of_dataframe, x_col, old_value):
 )
 def filter_z_values(name_of_dataframe, y_col, x_col, old_value):
     # I also allow categorical values for the z-axis. If you think this is bad, feel free to change that
-    print(get_valid_third_column(name_of_dataframe, x_col, y_col))
     cols = format_labels(name_of_dataframe, CONT_COLS,
                          valid_cols=get_valid_third_column(name_of_dataframe, x_col, y_col))
-    print(cols)
-
-    # cols = [{'label': i, 'value': i} for i in get_valid_third_column(name_of_dataframe, x_col, y_col)]
 
     # In case the original z-value is still allowed, we keep it, else we just take any arbitrary allowed value
     if old_value in [i['value'] for i in cols]:
@@ -235,7 +230,6 @@ def filter_z_values(name_of_dataframe, y_col, x_col, old_value):
     State('color-column', 'value'),
 )
 def filter_color_cats(name_of_dataframe, x_col, y_col, z_col, old_value):
-
     color_col_option = [
         i for i in format_labels(
             name_of_dataframe,
@@ -244,11 +238,6 @@ def filter_color_cats(name_of_dataframe, x_col, y_col, z_col, old_value):
         if i != "AccSpeciesName"
     ]
 
-    #color_col_option = [{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for i in
-    #                                                           cat_columns[name_of_dataframe] if i in
-    #                                                           get_valid_fourth_column(name_of_dataframe, x_col,
-    #                                                                                   y_col, z_col) and
-    #                                                           i != 'AccSpeciesName']
     # In case the original color-value is still allowed, we keep it, else we just take None
     if old_value in [i['value'] for i in color_col_option]:
         new_value = old_value

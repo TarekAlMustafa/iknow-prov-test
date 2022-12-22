@@ -6,9 +6,10 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CONT_COLS
+from planthub.utils.cat_cont_cols import CONT_COLS
+
 from .format import format_labels, get_cat_name
-from .read_data import continuous_columns, data_frames, dataframe_options
+from .read_data import data_frames, dataframe_options
 
 app = DjangoDash('histogram')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})

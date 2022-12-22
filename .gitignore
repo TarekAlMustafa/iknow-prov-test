@@ -330,6 +330,13 @@ planthub/media/
 
 
 .ipython/
-.env
-.envs/*
-!.envs/.local/
+.env
+
+.envs/*
+
+!.envs/.local/
+
+/planthub/data/viz/*
+!/planthub/data/viz/variable_table/
+*.xml
+*.iml

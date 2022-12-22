@@ -5,10 +5,10 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .cols import CONT_COLS
+from planthub.utils.cat_cont_cols import CONT_COLS
+
 from .format import format_labels, get_cat_name
 from .read_data import (
-    continuous_columns,
     data_frames,
     dataframe_options,
     get_valid_second_column,
@@ -187,7 +187,6 @@ app.layout = html.Div(children=[
 )
 def update_possible_densities(name_of_data_frame, old_value):
     cols = format_labels(name_of_data_frame, CONT_COLS)
-    # cols = [{'label': i, 'value': i} for i in continuous_columns[name_of_data_frame]]
 
     # In case the original x-value is still allowed, we keep it, else we just take any arbitrary allowed value
     # (the last one in this case)
@@ -207,9 +206,6 @@ def update_possible_densities(name_of_data_frame, old_value):
 )
 def filter_y_values(name_of_dataframe, x_col, old_value):
     cols = format_labels(name_of_dataframe, CONT_COLS, valid_cols=get_valid_second_column(name_of_dataframe, x_col))
-
-    #cols = [{'label': i, 'value': i} for i in get_valid_second_column(name_of_dataframe, x_col) if
-    #        i in continuous_columns[name_of_dataframe]]
 
     # In case the original y-value is still allowed, we keep it, else we just take any arbitrary allowed value
     if old_value in [i['value'] for i in cols]:
@@ -237,9 +233,6 @@ def filter_color_values(name_of_dataframe, x_col, y_col, old_value):
         if i != "AccSpeciesName"
     ]
 
-    #cols = [{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for
-    #                                               i in get_valid_third_column(name_of_dataframe, x_col, y_col) if
-    #                                               i != 'AccSpeciesName' and i in continuous_columns[name_of_dataframe]]
     # In case the original color-value is still allowed, we keep it, else we do not use any color
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
