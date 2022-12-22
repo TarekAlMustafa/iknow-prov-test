@@ -41,15 +41,7 @@ LOCALE_PATHS = [str(ROOT_DIR / "locale")]
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "planthub",
-        "USER": "postgres",
-        "PASSWORD": "",
-        "HOST": "localhost",
-        "PORT": "5432",
-        "ATOMIC_REQUESTS": False,
-    }
+    "default": env.db("DATABASE_URL2")
 }
 
 DATABASES["default"]["ATOMIC_REQUESTS"] = True
@@ -226,8 +218,8 @@ CSRF_COOKIE_HTTPONLY = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#secure-browser-xss-filter
 SECURE_BROWSER_XSS_FILTER = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#x-frame-options
-# X_FRAME_OPTIONS = "SAMEORIGIN"
-X_FRAME_OPTIONS = 'allow-from http://127.0.0.1:3000/'
+X_FRAME_OPTIONS = "SAMEORIGIN"
+# X_FRAME_OPTIONS = 'allow-from http://127.0.0.1:3000/'
 
 # EMAIL
 # ------------------------------------------------------------------------------
