@@ -1,6 +1,4 @@
 """
-Format column labels
-
 This module contains functions used for formatting the names of category and continuous columns
 to be displayed within the drop down menus, legends, axis labels and text hovers for the graphs
 on the EXPLORE page.
