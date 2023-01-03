@@ -22,7 +22,7 @@ PATH = os.path.join(
 )
 
 if os.path.exists(PATH + "/cat_cols.pickle") \
-    and os.path.exists(PATH + "/cont_cols.pickle"):
+        and os.path.exists(PATH + "/cont_cols.pickle"):
     CAT_COLS: dict[str, list[pd.Series]] | None = pd.read_pickle(PATH + "/cat_cols.pickle")
     CONT_COLS: dict[str, list[pd.Series]] | None = pd.read_pickle(PATH + "/cont_cols.pickle")
 else:
