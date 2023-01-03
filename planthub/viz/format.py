@@ -7,6 +7,7 @@ on the EXPLORE page.
 __author__ = "Yannick Brenning"
 __email__ = "yb63tadu@studserv.uni-leipzig.de"
 
+from typing import Optional
 import pandas as pd
 
 from planthub.utils.cat_cont_cols import get_all_cols
@@ -16,7 +17,7 @@ def format_labels(
     dataframe: str,
     cols: dict[str, list[pd.Series]],
     lang: str = "en",
-    valid_cols: list[str] | None = None
+    valid_cols: Optional[list[str]] = None
 ) -> list[dict[str, str]]:
     """
     Reformat the labels of a given column dictionary
@@ -99,7 +100,7 @@ def get_z_cat_name(cols: list[pd.Series], category: str, lang: str = "en") -> st
 
 
 def format_z_values(
-    valid_cols: list[str] | None = None,
+    valid_cols: Optional[list[str]] = None,
     lang: str = "en"
 ) -> list[dict[str, str]]:
     """

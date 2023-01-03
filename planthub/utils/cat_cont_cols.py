@@ -13,6 +13,7 @@ __email__ = "yb63tadu@studserv.uni-leipzig.de"
 
 import os
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 
@@ -23,8 +24,8 @@ PATH = os.path.join(
 
 if os.path.exists(PATH + "/cat_cols.pickle") \
         and os.path.exists(PATH + "/cont_cols.pickle"):
-    CAT_COLS: dict[str, list[pd.Series]] | None = pd.read_pickle(PATH + "/cat_cols.pickle")
-    CONT_COLS: dict[str, list[pd.Series]] | None = pd.read_pickle(PATH + "/cont_cols.pickle")
+    CAT_COLS: Optional[dict[str, list[pd.Series]]] = pd.read_pickle(PATH + "/cat_cols.pickle")
+    CONT_COLS: Optional[dict[str, list[pd.Series]]] = pd.read_pickle(PATH + "/cont_cols.pickle")
 else:
     CAT_COLS = None
     CONT_COLS = None
