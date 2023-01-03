@@ -21,8 +21,13 @@ PATH = os.path.join(
     "data", "viz", "variable_table"
 )
 
-CAT_COLS: dict[str, list[pd.Series]] = pd.read_pickle(PATH + "/cat_cols.pickle")
-CONT_COLS: dict[str, list[pd.Series]] = pd.read_pickle(PATH + "/cont_cols.pickle")
+if os.path.exists(PATH + "/cat_cols.pickle") \
+    and os.path.exists(PATH + "/cont_cols.pickle"):
+    CAT_COLS: dict[str, list[pd.Series]] | None = pd.read_pickle(PATH + "/cat_cols.pickle")
+    CONT_COLS: dict[str, list[pd.Series]] | None = pd.read_pickle(PATH + "/cont_cols.pickle")
+else:
+    CAT_COLS = None
+    CONT_COLS = None
 
 
 def get_all_cols() -> list[pd.Series]:
