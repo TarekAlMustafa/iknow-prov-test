@@ -5,9 +5,9 @@ on the EXPLORE page.
 """
 
 __author__ = "Yannick Brenning"
-__email__ = "yb63tadu@studserv.uni-leipzig.de"
 
 from typing import Optional
+
 import pandas as pd
 
 from planthub.utils.cat_cont_cols import get_all_cols

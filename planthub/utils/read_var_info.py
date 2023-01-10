@@ -6,8 +6,8 @@ For now, the dataset names to be used are a global hardcoded constant, like in `
 """
 
 __author__ = "Yannick Brenning"
-__email__ = "yb63tadu@studserv.uni-leipzig.de"
 
+import logging
 import os
 import pickle
 import traceback
@@ -16,7 +16,16 @@ from pathlib import Path
 
 import pandas as pd
 
-DATASETS = ["TRY", "TRY_Species", "PhenObs", "PhenObs_Species"]
+# TODO: add all PlantHub datasets to generic label
+DATASETS = [
+    "TRY",
+    "TRY_Species",
+    "PhenObs",
+    "PhenObs_Species",
+    "PlantHub genera",
+    "PlantHub families",
+    "PlantHub orders"
+]
 
 DATA_PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz")
 
@@ -60,7 +69,7 @@ def read_metadata_table() -> dict[str, list[pd.Series]]:
     """
     Read and process the variable information (metadata) from a .pickle file.
 
-    All variable information is processed from a dataframe into a dictionary `var_infos`,
+    All variable information is processed from a dataframe into a dictionary `metadata`,
     which maps the name of each dataset to a list of all rows belonging to the dataset.
     The rows are Series objects from the pandas library and have the columns as attributes,
     which can be accessed by indexing or by the dot operator.
@@ -92,11 +101,11 @@ def read_metadata_table() -> dict[str, list[pd.Series]]:
     """
     df = pd.read_pickle(METADATA_PATH)
 
-    var_infos = {}
+    metadata = {}
     for ds in DATASETS:
-        var_infos[ds] = [row[1] for row in df.iterrows() if row[1].dataset == ds]
+        metadata[ds] = [row[1] for row in df.iterrows() if row[1].dataset == ds]
 
-    return var_infos
+    return metadata
 
 
 def compare_tables(
@@ -117,39 +126,46 @@ def compare_tables(
 
     # Compare data tables to metadata table
     for ds in DATASETS:
-        for variable_id in data[ds].columns.values:
-            try:
-                # If it's not in the list of values, raise an exception
-                if not any(variable == variable_id for variable in
-                           [series.variable for series in metadata[ds]]):
-                    raise VariableNotFoundError(variable_id, ds)
+        mds = ds.split("_")[0] if ds.endswith("_Species") else ds
+        dds = DATASETS[0] if ds.startswith("PlantHub") else ds
 
-                # Otherwise, get the corresponding column from the data table
-                for i in range(0, len(metadata[ds])):
-                    if variable_id == metadata[ds][i].variable:
-                        columns[ds].append(metadata[ds][i])
+        for variable_id in data[dds].columns.values:
+            try:
+                # Attempt to get the corresponding column from the data table
+                for series in metadata[mds]:
+                    if variable_id.casefold() == series.variable.casefold():
+                        columns["PlantHub" if ds.startswith("PlantHub") else ds].append(series)
+                        logging.info(f"<{variable_id}> of dataset <{ds}> found.")
                         break
-            except VariableNotFoundError:
+                else:
+                    raise VariableNotFoundError(variable_id, ds)
+            except VariableNotFoundError as e:
                 traceback.print_exc()
+                logging.warning(e)
 
     # Compare metadata table to data tables
     for ds in DATASETS:
-        for var_info in metadata[ds]:
+        mds = ds.split("_")[0] if ds.endswith("_Species") else ds
+        dds = DATASETS[0] if ds.startswith("PlantHub") else ds
+
+        for series in metadata[mds]:
             try:
                 # List of columns from the current dataframe
-                curr_columns = data[ds].columns.values
+                curr_columns = data[dds].columns.values
 
-                # If the variable is missing from the current columns, raise an exception
-                if not any(col == var_info.variable for col in curr_columns):
-                    raise VariableNotFoundError(var_info.variable, ds)
-
-                # Otherwise, get the corresponding item
-                for i in range(0, len(curr_columns)):
+                # Attempt to get the corresponding item
+                for col in curr_columns:
                     # Check whether the variable is already in the current list
-                    if not any(series.variable == var_info.variable for series in columns[ds]):
-                        columns[ds].append(var_info)
+                    if col == series.variable and \
+                        not any(col.variable == series.variable
+                                for col in columns["PlantHub" if ds.startswith("PlantHub") else ds]):
+                        columns["PlantHub" if ds.startswith("PlantHub") else ds].append(series)
+                        logging.info(f"<{series.variable}> of dataset <{ds}> found.")
                         break
-            except VariableNotFoundError:
+                else:
+                    raise VariableNotFoundError(series.variable, ds)
+            except VariableNotFoundError as e:
+                logging.warning(e)
                 traceback.print_exc()
 
     return columns
@@ -172,9 +188,10 @@ def create_cat_cont(
 
     # Category columns consist of all columns which contain data of the type `object` or `category`
     for ds in DATASETS:
+        dds = DATASETS[0] if ds.startswith("PlantHub") else ds
         cat_cols[ds] = [
             col for col in columns[ds]
-            if data[ds][col.variable].dtype.name in ["object", "category"]
+            if data[dds][col.variable].dtype.name in ["object", "category"]
         ]
 
     # The continuous columns consist of all columns which are not in `cat_cols` and in addition,
@@ -186,6 +203,10 @@ def create_cat_cont(
                         and not any(col.variable == series.variable for series in cont_cols[ds]):
                     cont_cols[ds].append(col)
 
+            cat_names = [col.name for col in cat_cols[ds]]
+            cont_names = [col.name for col in cont_cols[ds]]
+            assert set(cat_names).isdisjoint(cont_names)
+
     return cat_cols, cont_cols
 
 
@@ -195,11 +216,21 @@ def save_cat_cont() -> None:
     in two .pickle files within the directory `SAVE_PATH`.
     """
     data = read_data_tables()
+    for ds in DATASETS:
+        if ds.startswith("PlantHub"):
+            continue
+        logging.debug(ds, data[ds].columns)
+
     metadata = read_metadata_table()
+    for ds in DATASETS:
+        logging.debug(ds, [n.variable for n in metadata[ds]])
+
     columns = compare_tables(data, metadata)
+    logging.debug(columns)
+
     CAT_COLS, CONT_COLS = create_cat_cont(columns, data)
 
-    # Save `CAT_COLS` and `CONT_COPLS` as .pickle files within data/viz/variable_table
+    # Save `CAT_COLS` and `CONT_COLS` as .pickle files within data/viz/variable_table
     try:
         with open(SAVE_PATH + "/cat_cols.pickle", "wb") as catf:
             pickle.dump(CAT_COLS, catf)
@@ -213,6 +244,13 @@ def save_cat_cont() -> None:
 
 
 def main() -> None:
+    logging.basicConfig(
+        filename="read_var_info.log",
+        filemode="w",
+        encoding="utf-8",
+        level=logging.INFO,
+        format="[%(levelname)s] %(asctime)s - %(message)s"
+    )
     save_cat_cont()
 
 

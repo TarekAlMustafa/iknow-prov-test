@@ -9,9 +9,9 @@ Attributes:
 """
 
 __author__ = "Yannick Brenning"
-__email__ = "yb63tadu@studserv.uni-leipzig.de"
 
 import os
+import traceback
 from pathlib import Path
 from typing import Optional
 
@@ -22,13 +22,19 @@ PATH = os.path.join(
     "data", "viz", "variable_table"
 )
 
-if os.path.exists(PATH + "/cat_cols.pickle") \
-        and os.path.exists(PATH + "/cont_cols.pickle"):
-    CAT_COLS: Optional[dict[str, list[pd.Series]]] = pd.read_pickle(PATH + "/cat_cols.pickle")
-    CONT_COLS: Optional[dict[str, list[pd.Series]]] = pd.read_pickle(PATH + "/cont_cols.pickle")
-else:
-    CAT_COLS = None
-    CONT_COLS = None
+try:
+    if os.path.exists(PATH + "/cat_cols.pickle") \
+            and os.path.exists(PATH + "/cont_cols.pickle"):
+        CAT_COLS: Optional[dict[str, list[pd.Series]]] = pd.read_pickle(PATH + "/cat_cols.pickle")
+        CONT_COLS: Optional[dict[str, list[pd.Series]]] = pd.read_pickle(PATH + "/cont_cols.pickle")
+    else:
+        raise FileNotFoundError(
+            """CAT and CONT pickle files not found. Use `read_var_info.py` to generate `cat_cols.pickle`
+            and `cont_cols.pickle` within the data/viz/variable_table directory."""
+        )
+except FileNotFoundError:
+    traceback.print_exc()
+    CAT_COLS = CONT_COLS = None
 
 
 def get_all_cols() -> list[pd.Series]:
