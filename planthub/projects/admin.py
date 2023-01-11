@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Project, ProjectContact
+from .models import Project, ProjectContact, ProjectFunFact
 
 
 @admin.register(Project)
