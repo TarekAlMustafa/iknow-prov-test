@@ -39,6 +39,9 @@ pytest_3_9:
     - virtualenv venv
     - source venv/bin/activate
     - pip install -r requirements/local.txt
+    - python manage.py makemigrations
+    - python manage.py migrate
+    - python manage.py check
 
   script:
     - pytest --junitxml=report.xml
@@ -60,7 +63,9 @@ pytest_3_10_coverage:
     - virtualenv venv
     - source venv/bin/activate
     - pip install -r requirements/local.txt
-
+    - python manage.py makemigrations
+    - python manage.py migrate
+    - python manage.py check
   script:
     - pytest --junitxml=report.xml
     - pip install pytest pytest-cov
@@ -71,7 +76,9 @@ pytest_3_10_coverage:
     when: always
     reports:
       junit: report.xml
-      cobertura: coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 deploy:
   stage: deploy
