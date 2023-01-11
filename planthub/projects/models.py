@@ -42,8 +42,6 @@ class Project(models.Model):
     link = models.CharField(_("Project Website"), max_length=1000)
     contact = models.ManyToManyField(ProjectContact, related_name="project_project_contacts",
                                      blank=True, verbose_name=_("Project contacts"))
-    funfacts = models.ManyToManyField(ProjectFunFact, related_name="project_project_funfacts",
-                                      blank=True, verbose_name=_("Project funfacts"))
 
     def __str__(self):
         return self.title_en

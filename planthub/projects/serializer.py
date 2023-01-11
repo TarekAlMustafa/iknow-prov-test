@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Project, ProjectContact, ProjectFunFact
+from .models import Project, ProjectContact
 
 
 class ProjectContactSerializer(serializers.ModelSerializer):
