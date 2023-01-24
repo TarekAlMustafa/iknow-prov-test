@@ -3,6 +3,12 @@
 """
 The updated variable metadata will be located in the data/viz/variable_table directory.
 For now, the dataset names to be used are a global hardcoded constant, like in `read_data.py`.
+
+Note:
+    If the metadata directory does not contain `varinfo.pickle`, generate the pickle file using the most
+    recent metadata Excel file and the script `read_metadata_excel.py` within the same directory.
+
+TODO: Remove `casefold()` on variable ID comparison once data table gets fixed
 """
 
 __author__ = "Yannick Brenning"
@@ -16,12 +22,14 @@ from pathlib import Path
 
 import pandas as pd
 
-# TODO: add all PlantHub datasets to generic label
 DATASETS = [
     "TRY",
-    "TRY_Species",
     "PhenObs",
-    "PhenObs_Species",
+    "sPlot",
+    "GloNAF"
+]
+
+CONST_DATASETS = [
     "PlantHub genera",
     "PlantHub families",
     "PlantHub orders"
@@ -29,12 +37,12 @@ DATASETS = [
 
 DATA_PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "data", "viz")
 
-SAVE_PATH = os.path.join(
+METADATA_PATH = os.path.join(
     Path(__file__).resolve(strict=True).parent.parent,
     "data", "viz", "variable_table"
 )
 
-METADATA_PATH = os.path.join(
+SAVE_PATH = os.path.join(
     Path(__file__).resolve(strict=True).parent.parent,
     "data", "viz", "variable_table", "varinfo.pickle"
 )
@@ -46,7 +54,7 @@ class VariableNotFoundError(Exception):
     during the comparison of the metadata and data tables.
     """
     def __init__(self, variable: str, dataset: str) -> None:
-        super().__init__(f"Variable <{variable}> of dataset <{dataset}> was not found.")
+        super().__init__(f"{dataset}: {variable} was not found.")
 
 
 def read_data_tables() -> dict[str, pd.DataFrame]:
@@ -102,7 +110,7 @@ def read_metadata_table() -> dict[str, list[pd.Series]]:
     df = pd.read_pickle(METADATA_PATH)
 
     metadata = {}
-    for ds in DATASETS:
+    for ds in DATASETS + CONST_DATASETS:
         metadata[ds] = [row[1] for row in df.iterrows() if row[1].dataset == ds]
 
     return metadata
@@ -125,17 +133,18 @@ def compare_tables(
     columns = defaultdict(list)
 
     # Compare data tables to metadata table
-    for ds in DATASETS:
-        mds = ds.split("_")[0] if ds.endswith("_Species") else ds
+    for ds in DATASETS + CONST_DATASETS:
         dds = DATASETS[0] if ds.startswith("PlantHub") else ds
+        cds = "PlantHub" if ds.startswith("PlantHub") else ds
 
         for variable_id in data[dds].columns.values:
             try:
                 # Attempt to get the corresponding column from the data table
-                for series in metadata[mds]:
+                for series in metadata[ds]:
                     if variable_id.casefold() == series.variable.casefold():
-                        columns["PlantHub" if ds.startswith("PlantHub") else ds].append(series)
-                        logging.info(f"<{variable_id}> of dataset <{ds}> found.")
+                        if not any(col.variable.casefold() == series.variable.casefold() for col in columns[cds]):
+                            columns[cds].append(series)
+                        logging.info(f"{ds}: {variable_id} was found.")
                         break
                 else:
                     raise VariableNotFoundError(variable_id, ds)
@@ -144,11 +153,11 @@ def compare_tables(
                 logging.warning(e)
 
     # Compare metadata table to data tables
-    for ds in DATASETS:
-        mds = ds.split("_")[0] if ds.endswith("_Species") else ds
+    for ds in DATASETS + CONST_DATASETS:
         dds = DATASETS[0] if ds.startswith("PlantHub") else ds
+        cds = "PlantHub" if ds.startswith("PlantHub") else ds
 
-        for series in metadata[mds]:
+        for series in metadata[ds]:
             try:
                 # List of columns from the current dataframe
                 curr_columns = data[dds].columns.values
@@ -156,17 +165,16 @@ def compare_tables(
                 # Attempt to get the corresponding item
                 for col in curr_columns:
                     # Check whether the variable is already in the current list
-                    if col == series.variable and \
-                        not any(col.variable == series.variable
-                                for col in columns["PlantHub" if ds.startswith("PlantHub") else ds]):
-                        columns["PlantHub" if ds.startswith("PlantHub") else ds].append(series)
-                        logging.info(f"<{series.variable}> of dataset <{ds}> found.")
+                    if col.casefold() == series.variable.casefold():
+                        if not any(col.variable.casefold() == series.variable.casefold() for col in columns[cds]):
+                            columns[cds].append(series)
+                        logging.info(f"{ds}: {series.variable} was found.")
                         break
                 else:
                     raise VariableNotFoundError(series.variable, ds)
             except VariableNotFoundError as e:
-                logging.warning(e)
                 traceback.print_exc()
+                logging.warning(e)
 
     return columns
 
@@ -184,6 +192,12 @@ def create_cat_cont(
     :param data: dictionary of datasets mapped to their corresponding dataframes
     :return: tuple of category columns and continuous columns
     """
+    for ds, cols in columns.items():
+        for col in cols:
+            dds = DATASETS[0] if ds.startswith("PlantHub") else ds
+            assert any(variable_id.casefold() == col.variable.casefold()
+                       for variable_id in data[dds].columns.values)
+
     cat_cols, cont_cols = defaultdict(list), defaultdict(list)
 
     # Category columns consist of all columns which contain data of the type `object` or `category`
@@ -214,19 +228,29 @@ def save_cat_cont() -> None:
     """
     Uses the functions above to save the category columns and continuous columns
     in two .pickle files within the directory `SAVE_PATH`.
+
+    Note:
+        To show data table, metadata table and result of comparison, set logging level to `DEBUG`.
     """
     data = read_data_tables()
-    for ds in DATASETS:
-        if ds.startswith("PlantHub"):
-            continue
-        logging.debug(ds, data[ds].columns)
+    if logging.getLogger().level == logging.DEBUG:
+        for ds in DATASETS:
+            print(ds, data[ds].columns)
+        print("")
 
     metadata = read_metadata_table()
-    for ds in DATASETS:
-        logging.debug(ds, [n.variable for n in metadata[ds]])
+    if logging.getLogger().level == logging.DEBUG:
+        for ds in DATASETS + CONST_DATASETS:
+            print(ds, [n.variable for n in metadata[ds]])
+            print("")
 
     columns = compare_tables(data, metadata)
-    logging.debug(columns)
+    if logging.getLogger().level == logging.DEBUG:
+        for key, value in columns.items():
+            print(key + ": ")
+            for col in value:
+                print(col.variable)
+            print("")
 
     CAT_COLS, CONT_COLS = create_cat_cont(columns, data)
 
@@ -246,7 +270,6 @@ def save_cat_cont() -> None:
 def main() -> None:
     logging.basicConfig(
         filename="read_var_info.log",
-        filemode="w",
         encoding="utf-8",
         level=logging.INFO,
         format="[%(levelname)s] %(asctime)s - %(message)s"
