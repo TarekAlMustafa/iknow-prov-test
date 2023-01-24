@@ -15,7 +15,7 @@ from planthub.utils.cat_cont_cols import get_all_cols
 
 def format_labels(
     dataframe: str,
-    cols: dict[str, list[pd.Series]],
+    cols: Optional[dict[str, list[pd.Series]]],
     lang: str = "en",
     valid_cols: Optional[list[str]] = None
 ) -> list[dict[str, str]]:
@@ -28,19 +28,20 @@ def format_labels(
     :param valid_cols: list of valid columns in the case of multiple drop down menus
     :return: list of dicts where each dict contains the col's label and value
     """
+    assert cols is not None
     if lang.casefold() == "en":
         if not valid_cols:
-            return [{'label': i.variableLong_eng, 'value': i.variable} for i in cols[dataframe]]
+            return [{"label": i.variableLong_eng, "value": i.variable} for i in cols[dataframe]]
         else:
-            return [{'label': 'None', 'value': 'None'}] + \
-                   [{'label': i.variableLong_eng, 'value': i.variable}
+            return [{"label": "None", "value": "None"}] + \
+                   [{"label": i.variableLong_eng, "value": i.variable}
                     for i in cols[dataframe] if i.variable in valid_cols]
     elif lang.casefold() == "de":
         if not valid_cols:
-            return [{'label': i.variableLong_de, 'value': i[0]} for i in cols[dataframe]]
+            return [{"label": i.variableLong_de, "value": i[0]} for i in cols[dataframe]]
         else:
-            return [{'label': 'None', 'value': 'None'}] + \
-                   [{'label': i.variableLong_de, 'value': i.variable}
+            return [{"label": "None", "value": "None"}] + \
+                   [{"label": i.variableLong_de, "value": i.variable}
                     for i in cols[dataframe] if i.variable in valid_cols]
     else:
         raise ValueError("Invalid language specifier")
@@ -49,7 +50,7 @@ def format_labels(
 def get_cat_name(
     dataframe: str,
     category: str,
-    cols: dict[str, list[pd.Series]],
+    cols: Optional[dict[str, list[pd.Series]]],
     lang: str = "en"
 ) -> str:
     """
@@ -61,6 +62,8 @@ def get_cat_name(
     :param lang: language to be displayed
     :return: category name obtained from the dataset in given language
     """
+    assert cols is not None
+
     for col in cols[dataframe]:
         if category == col.variable:
             if lang.casefold() == "en":

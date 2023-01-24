@@ -22,6 +22,7 @@ PATH = os.path.join(
     "data", "viz", "variable_table"
 )
 
+CAT_COLS = CONT_COLS = None
 try:
     if os.path.exists(PATH + "/cat_cols.pickle") \
             and os.path.exists(PATH + "/cont_cols.pickle"):
@@ -30,11 +31,10 @@ try:
     else:
         raise FileNotFoundError(
             """CAT and CONT pickle files not found. Use `read_var_info.py` to generate `cat_cols.pickle`
-            and `cont_cols.pickle` within the data/viz/variable_table directory."""
+            and `cont_cols.pickle` within the data/viz/metadata directory."""
         )
 except FileNotFoundError:
     traceback.print_exc()
-    CAT_COLS = CONT_COLS = None
 
 
 def get_all_cols() -> list[pd.Series]:
@@ -44,11 +44,14 @@ def get_all_cols() -> list[pd.Series]:
     :return: all columns within `CAT_COLS` and `CONT_COLS`
     """
     all_cols = []
+
+    assert CAT_COLS is not None
     for df in CAT_COLS.values():
         for col in df:
             if col.variable not in [series.variable for series in all_cols]:
                 all_cols.append(col)
 
+    assert CONT_COLS is not None
     for df in CONT_COLS.values():
         for col in df:
             if col.variable not in [series.variable for series in all_cols]:
