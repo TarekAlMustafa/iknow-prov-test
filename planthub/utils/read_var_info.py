@@ -1,12 +1,12 @@
 #!usr/bin/env python3
 
 """
-The updated variable metadata will be located in the data/viz/variable_table directory.
+The updated variable metadata will be located in the data/viz/metadata directory.
 For now, the dataset names to be used are a global hardcoded constant, like in `read_data.py`.
 
 Note:
-    If the metadata directory does not contain `varinfo.pickle`, generate the pickle file using the most
-    recent metadata Excel file and the script `read_metadata_excel.py` within the same directory.
+    If the metadata directory does not contain `metadata.pickle`, generate the pickle file using the most
+    recent Excel file and the script `read_metadata_excel.py` within the same directory.
 
 TODO: Remove `casefold()` on variable ID comparison once data table gets fixed
 """
@@ -39,12 +39,12 @@ DATA_PATH = os.path.join(Path(__file__).resolve(strict=True).parent.parent, "dat
 
 METADATA_PATH = os.path.join(
     Path(__file__).resolve(strict=True).parent.parent,
-    "data", "viz", "variable_table"
+    "data", "viz", "metadata", "metadata.pickle"
 )
 
 SAVE_PATH = os.path.join(
     Path(__file__).resolve(strict=True).parent.parent,
-    "data", "viz", "variable_table", "varinfo.pickle"
+    "data", "viz", "metadata"
 )
 
 
@@ -254,7 +254,7 @@ def save_cat_cont() -> None:
 
     CAT_COLS, CONT_COLS = create_cat_cont(columns, data)
 
-    # Save `CAT_COLS` and `CONT_COLS` as .pickle files within data/viz/variable_table
+    # Save `CAT_COLS` and `CONT_COLS` as .pickle files within data/viz/metadata
     try:
         with open(SAVE_PATH + "/cat_cols.pickle", "wb") as catf:
             pickle.dump(CAT_COLS, catf)

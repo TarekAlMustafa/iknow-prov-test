@@ -337,6 +337,6 @@ planthub/media/
 !.envs/.local/
 
 /planthub/data/viz/*
-!/planthub/data/viz/variable_table/
+!/planthub/data/viz/metadata/
 
 /.idea

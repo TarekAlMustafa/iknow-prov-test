@@ -19,7 +19,7 @@ import pandas as pd
 
 PATH = os.path.join(
     Path(__file__).resolve(strict=True).parent.parent,
-    "data", "viz", "variable_table"
+    "data", "viz", "metadata"
 )
 
 CAT_COLS = CONT_COLS = None
