@@ -6,13 +6,10 @@ from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .read_data import (
-    cat_columns,
-    continuous_columns,
-    data_frames,
-    dataframe_options,
-    get_valid_second_column,
-)
+from planthub.utils.cat_cont_cols import CAT_COLS, CONT_COLS
+
+from .format import format_labels, get_cat_name
+from .read_data import data_frames, dataframe_options, get_valid_second_column
 
 app = DjangoDash('violin')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
@@ -36,11 +33,32 @@ def create_violin(name_of_dataframe, density, category, show_range):
         show_range = [-np.inf, np.inf]
     if category == 'None':
         helper_df = df[['ones', density]].loc[(df[density] <= show_range[1]) & (df[density] >= show_range[0])]
-        return px.violin(helper_df, y=density, box=True, title=f'Showing {len(helper_df)} points')
+
+        helper_df.columns = ["ones", get_cat_name(name_of_dataframe, density, CONT_COLS)]
+
+        return px.violin(
+            helper_df,
+            y=get_cat_name(name_of_dataframe, density, CONT_COLS),
+            box=True,
+            title=f'Showing {len(helper_df)} points'
+        )
     else:
         helper_df = df[['ones', density, category, ]].loc[
             (df[density] <= show_range[1]) & (df[density] >= show_range[0])]
-        return px.violin(helper_df, x=category, y=density, box=True, title=f'Showing {len(helper_df)} points')
+
+        helper_df.columns = [
+            "ones",
+            get_cat_name(name_of_dataframe, density, CONT_COLS),
+            get_cat_name(name_of_dataframe, category, CAT_COLS)
+        ]
+
+        return px.violin(
+            helper_df,
+            x=get_cat_name(name_of_dataframe, category, CAT_COLS),
+            y=get_cat_name(name_of_dataframe, density, CONT_COLS),
+            box=True,
+            title=f'Showing {len(helper_df)} points'
+        )
 
 
 app.layout = html.Div([
@@ -126,7 +144,7 @@ def update_range_slider(name_of_data_frame, density):
     State('density', 'value'),
 )
 def update_possible_densities(name_of_dataframe, old_value):
-    cols = [{'label': i, 'value': i} for i in continuous_columns[name_of_dataframe]]
+    cols = format_labels(name_of_dataframe, CONT_COLS)
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
     else:
@@ -142,9 +160,13 @@ def update_possible_densities(name_of_dataframe, old_value):
     State('cat', 'value'),
 )
 def update_possible_categories(name_of_dataframe, density, old_value):
-    cols = [{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for i in
-                                                   cat_columns[name_of_dataframe] if
-                                                   i in get_valid_second_column(name_of_dataframe, density)]
+    print(density)
+    print(get_valid_second_column(name_of_dataframe, density))
+    cols = format_labels(name_of_dataframe,
+                         CAT_COLS,
+                         valid_cols=get_valid_second_column(name_of_dataframe, density))
+    print(cols)
+
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
     else:

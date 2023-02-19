@@ -1,18 +1,15 @@
 import colorcet as cc
-import dash_core_components as dcc
-import dash_html_components as html
 import numpy as np
 import plotly.express as px
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
 from django.conf import settings
 from django_plotly_dash import DjangoDash
 
-from .read_data import (
-    cat_columns,
-    data_frames,
-    dataframe_options,
-    get_valid_second_column,
-)
+from planthub.utils.cat_cont_cols import CAT_COLS
+
+from .format import format_labels, get_cat_name
+from .read_data import data_frames, dataframe_options, get_valid_second_column
 
 app = DjangoDash('bar')
 app.css.append_css({"external_url": settings.STATIC_URL_PREFIX + "/static/css/dashstyle.css"})
@@ -35,15 +32,31 @@ def create_bar_chart(name_of_data_frame, category='TRY_Growth form 2', category2
             helper_df = df[['ones', category]].replace('unknown', np.nan)
         else:
             helper_df = df[['ones', category, category2]].replace('unknown', np.nan)
+
     if category2 == 'None':
         data = helper_df.groupby(category).agg(np.sum).rename(columns={'ones': 'count'})
+        data.index.name = get_cat_name(name_of_data_frame, category, CAT_COLS)
         return px.bar(data, data.index, 'count')
     else:
         data = helper_df.groupby([category, category2]).agg(np.sum).rename(
             columns={'ones': 'count'}).reset_index()
-        cmap_list = zip(data[category2].drop_duplicates(), cc.glasbey)
+
+        data.columns = [
+            get_cat_name(name_of_data_frame, category, CAT_COLS),
+            get_cat_name(name_of_data_frame, category2, CAT_COLS),
+            "count"
+        ]
+
+        cmap_list = zip(data[get_cat_name(name_of_data_frame, category2, CAT_COLS)].drop_duplicates(), cc.glasbey)
         cmap_dict = {n: ('gray' if n == 'unknown' else k) for n, k in cmap_list}
-        return px.bar(data, x=category, y='count', color=category2, color_discrete_map=cmap_dict)
+
+        return px.bar(
+            data,
+            x=get_cat_name(name_of_data_frame, category, CAT_COLS),
+            y='count',
+            color=get_cat_name(name_of_data_frame, category2, CAT_COLS),
+            color_discrete_map=cmap_dict
+        )
 
 
 app.layout = html.Div(children=[
@@ -131,7 +144,7 @@ app.layout = html.Div(children=[
     State('cat', 'value')
 )
 def update_col(name_of_dataframe, old_value):
-    cols = [{'label': i, 'value': i} for i in cat_columns[name_of_dataframe]]
+    cols = format_labels(name_of_dataframe, CAT_COLS)
     if old_value in [i['value'] for i in cols]:
         new_value = old_value
     else:
@@ -147,8 +160,12 @@ def update_col(name_of_dataframe, old_value):
     State('cat2', 'value'),
 )
 def update_second_col(name_of_dataframe, cat, old_value):
-    cols = [{'label': 'None', 'value': 'None'}] + [{'label': i, 'value': i} for i in cat_columns[name_of_dataframe] if
-                                                   i in get_valid_second_column(name_of_dataframe, cat)]
+    cols = format_labels(
+        name_of_dataframe,
+        CAT_COLS,
+        valid_cols=get_valid_second_column(name_of_dataframe, cat)
+    )
+
     # In case the original second is still allowed, we keep it, else we do not use any color
     if old_value in [i['value'] for i in cols]:
         new_value = old_value

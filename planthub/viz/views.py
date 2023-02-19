@@ -1,9 +1,8 @@
 # flake8: noqa
-from django.shortcuts import render
-from .read_data import get_active_dataset
 from django.http import JsonResponse
+from django.shortcuts import render
 
-from . import (
+from . import (  # this import is needed, so keep it!
     bar,
     histogram,
     pie,
@@ -12,7 +11,8 @@ from . import (
     scatter_cont,
     scatter_matrix_cat,
     violin,
-)  # this import is needed, so keep it!
+)
+from .read_data import get_active_dataset
 
 
 def get_datasets(request):

@@ -170,7 +170,7 @@ def create_index():
         taxon_list = []
         subspecies = {'scientific_name': None, 'subspecies_EnglishName': None, 'subspecies_GermanName': None}
 
-        if len(row['AccSpeciesName'].split(" ")) > 2:
+        if row['AccSpeciesName'] is not None and len(row['AccSpeciesName'].split(" ")) > 2:
             row['subspecies_EnglishName'] = row['species_EnglishName']
             row['species_EnglishName'] = None
             row['subspecies_GermanName'] = row['species_GermanName']

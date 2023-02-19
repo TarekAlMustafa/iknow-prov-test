@@ -8,7 +8,7 @@ import xarray as xr
 path = data_path = os.path.join(Path(__file__).resolve(strict=True).parent.parent, 'data', 'viz')
 print(path)
 # TODO: This list should come in the future from the database
-datasets = ['TRY', 'TRY_Species']  # 'PhenObs', 'PhenObs_Species'
+datasets = ['TRY', 'TRY_Species', 'PhenObs', 'PhenObs_Species']  # 'PhenObs', 'PhenObs_Species'
 # datasets = ['TRY', 'PhenObs', 'TRY_Species', 'PhenObs_Species', 'Phenobs_Test2_Species']
 active_datasets = []
 
@@ -16,7 +16,6 @@ data_frames = {}
 for item in datasets:
     try:
         data_frames[item] = pd.read_pickle(os.path.join(path, item + '.pickle'))
-        active_datasets.append(item)
     except FileNotFoundError:
         print(item + " not found.")
 
