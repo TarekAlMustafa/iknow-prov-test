@@ -2,6 +2,8 @@
 # THis file is saving provenance information about each sgp the main functionality
 # is done in iknow_manager.
 
+# hello from tarek, will add prov data capture to existing functions
+
 import pandas as pd
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -10,6 +12,19 @@ from planthub.iknow_datasets.views import dataset_from_key
 
 from .models import SGP
 
+import prov
+from prov.model import ProvDocument, Namespace, Literal, PROV, Identifier, PROV_TYPE
+from prov.dot import prov_to_dot
+
+
+#def sgp_create() -> SGP:
+#    """
+#    Creates a new sgp.
+#    """
+#    new_sgp = SGP()
+#    new_sgp.save()
+
+#    return new_sgp
 
 def sgp_create() -> SGP:
     """
@@ -47,6 +62,17 @@ def sgp_set_phase_state(sgp: SGP, new_state: str):
     """
     cur_phase_num = str(len(sgp.provenanceRecord)-1)
     sgp.provenanceRecord[cur_phase_num]["state"] = new_state
+
+    d1 = ProvDocument()
+    d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
+    #e_SGP = d1.entity(
+    #    'prov:SGP',(
+    #        ('prov:type', PROV['Plan']),
+    #))
+
+    #sgp.provenanceDoc["test"]["hello from tarek"] = d1.get_provn()
+
+
     sgp.save()
 
 
@@ -63,7 +89,10 @@ def sgp_append_linking_step(sgp: SGP, input_pk, output_pk, method: str = "iknow-
     sgp.provenanceRecord[next_step]["actions"]["output"] = output_pk
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
     sgp.provenanceRecord[next_step]["state"] = "running"
+    sgp.provenanceRecord[next_step]["actions"]["hello"] = "hello from tarek2"
 
+    print('hello from tarek')
+    
     sgp.save()
 
 
@@ -89,6 +118,8 @@ def sgp_append_mapping_step(sgp: SGP, edits: dict, method: str = "iknow-method")
     to the provenance record.
     """
     next_step = str(len(sgp.provenanceRecord))
+    print(next_step)
+    print("hello form next step ")
     sgp.provenanceRecord[next_step] = {}
     sgp.provenanceRecord[next_step]["type"] = "editmapping"
     sgp.provenanceRecord[next_step]["edits"] = edits
@@ -156,6 +187,76 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
     sgp.provenanceRecord[next_step]["type"] = "downloading"
     sgp.provenanceRecord[next_step]["actions"] = {}
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
+
+    d1 = ProvDocument()
+    d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
+    d1.add_namespace('iknow', 'https://iknow.net')
+    
+    # testing prov 
+    name = ''
+    for key, phase in sgp.provenanceRecord.items():
+        print(phase)
+        if phase['type'] == 'init':
+            print('testinit')
+            e_phase_init = d1.entity(
+                'prov:phase_init', (
+                    (PROV_TYPE, 'process'),
+                    ('prov:name', str(phase['type'])),
+                )
+            )
+            a_init_action = d1.activity('prov:init_action', None, None, {PROV_TYPE: 'iknow:method', 'prov:value': str(phase['actions']['method'])})
+            #d1.wasGeneratedBy(e_phase_init, a_phase_init, None, {'ex:fct': "save"})
+            print('this is another test ' + str(phase['actions']['method']))
+
+            for values in phase['selection']:
+                for keys in phase['selection'][values]:
+                    print(keys)
+                    for data in phase['selection'][values][keys]:
+                        print(data)
+
+                        
+        if phase['type'] == 'linking':
+            print('testlinking')
+            e_phase_linking = d1.entity(
+                'prov:phase_linking', (
+                    (PROV_TYPE, "process"),
+                    ('prov:name', str(phase['type'])),
+                )
+            )
+        if phase['type'] == 'editcpa':
+            print('testeditcpa')
+            e_phase_editcpa = d1.entity(
+                'prov:phase_edit_cpa', (
+                    (PROV_TYPE, "process"),
+                    ('prov:name', str(phase['type'])),
+                )
+            )
+        if phase['type'] == 'schemarefine':
+            print('testschemarefine')
+            e_phase_schemarefine = d1.entity(
+                'prov:phase_schema_refine', (
+                    (PROV_TYPE, "process"),
+                    ('prov:name', str(phase['type'])),
+                )
+            )
+        if phase['type'] == 'downloading':
+            print('testdownloading')
+            e_phase_downloading = d1.entity(
+                'prov:phase_downloading', (
+                    (PROV_TYPE, "process"),
+                    ('prov:name', str(phase['type'])),
+                )
+            )
+        #name += str(key)
+        #name = d1.entity(
+        #    'prov:SGP',(
+        #    ('prov:test', str(phase)),
+        #    )
+        #)
+    
+    print(d1.get_provn())
+    d1.serialize('article-prov5.ttl', format='rdf', rdf_format='ttl')
+    print(d1.serialize())
 
     sgp.save()
 

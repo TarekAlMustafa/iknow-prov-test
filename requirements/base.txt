@@ -36,3 +36,4 @@ markupsafe ==2.1.1
 elasticsearch-dsl>=7.0.0
 plotly==5.8.2 # temporary until we can upgrade without errors
 Flask==2.1.0
+

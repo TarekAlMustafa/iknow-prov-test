@@ -16,6 +16,10 @@ class SGP(models.Model):
     # TODO: - mark layout as comment here
     provenanceRecord = models.JSONField(default=dict)
 
+    # hello from tarek
+    # new django field to type prov package info into
+    provenanceDoc = models.JSONField(default=dict)
+
     original_table_header = models.JSONField(default=dict)
 
     original_filename = models.CharField(max_length=4096, default="")
