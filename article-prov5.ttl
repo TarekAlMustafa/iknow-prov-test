@@ -1,3 +1,4 @@
+@prefix iknow: <https://iknow.net> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
@@ -19,9 +20,28 @@ prov:phase_init a prov:Entity,
 
 prov:phase_linking a prov:Entity,
         "process"^^xsd:string ;
-    prov:name "linking"^^xsd:string .
+    prov:name "linking"^^xsd:string ;
+    iknow:actions_input "166"^^xsd:string ;
+    iknow:actions_method "Direct API"^^xsd:string ;
+    iknow:actions_output "167"^^xsd:string ;
+    iknow:state "done"^^xsd:string .
 
 prov:phase_schema_refine a prov:Entity,
         "process"^^xsd:string ;
     prov:name "schemarefine"^^xsd:string .
+
+iknow:child a prov:Entity ;
+    iknow:child "{'0': 'Garden', '1': 'Garden', '2': 'Garden', '3': 'Garden', '4': 'Garden'}"^^xsd:string .
+
+iknow:mapping a prov:Entity ;
+    iknow:mapping "{'0': 'https://www.wikidata.org/wiki/Q167346', '1': 'https://www.wikidata.org/wiki/Q167346', '2': 'https://www.wikidata.org/wiki/Q167346', '3': 'https://www.wikidata.org/wiki/Q167346', '4': 'https://www.wikidata.org/wiki/Q167346'}"^^xsd:string .
+
+iknow:parent a prov:Entity ;
+    iknow:parent "{'0': 'Location', '1': 'Location', '2': 'Location', '3': 'Location', '4': 'Location'}"^^xsd:string .
+
+iknow:subject a prov:Entity ;
+    iknow:subject "{}"^^xsd:string .
+
+iknow:type a prov:Entity ;
+    iknow:type "{'0': 'Integer', '1': 'String', '2': 'Integer', '3': 'Integer', '4': 'String'}"^^xsd:string .
 

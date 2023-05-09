@@ -195,13 +195,12 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
     d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
     d1.add_namespace('iknow', 'https://iknow.net')
     
-    # testing prov 
-    name = ''
-    #json load before loop
-    #print(type(sgp.provenanceRecord.items()))
-    #testJSON = json.loads(str(sgp.provenanceRecord.items()))
+    # testing prov
+    # TODO? json load before loop
     for key, phase in sgp.provenanceRecord.items():
         print(phase)
+#--------------------------------------------------------------------------
+#get all data from 'init' phase 
         if phase['type'] == 'init':
             e_phase_init = d1.entity(
                 'prov:phase_init', (
@@ -211,48 +210,69 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
             )
             a_init_action = d1.activity('prov:init_action', None, None, {PROV_TYPE: 'iknow:method', 'prov:value': str(phase['actions']['method'])})
             #d1.wasGeneratedBy(e_phase_init, a_phase_init, None, {'ex:fct': "save"})
-            print('this is another test ' + str(phase['actions']['method']))
-
-            #if not (phase['selection']['type'] == None):
-            #    for things in phase['selection']['type']:
-            #        print(things)
-            #        for data in phase['selection']['type'][things]:
-            #            print(things[data])
-            print(type(phase['selection']))
-
-
-            # convert phase[selection] to json 
-            print(type(phase['selection']['type']['0']))
-
-
-
-
-            #toJSON = json.loads(str(phase['selection']))
-            #print(toJSON['type'])
+           
+            # read data from selection (datapoints, coloumn data type)
+    #----------------------------------------------------------------------
+    #get all data from 'selection' subfield; turn the data into entities
             for values in phase['selection']:
-                print(values)
+                ##print('values: ', values)
                 for keys in phase['selection'].values():
-                    print(keys)
-                    print(type(keys))
-                    print('test123')
-                    #print(keys['0'])
+                    ##print('data: ', keys)
                     for val in keys:
-                        print(keys[str(val)])
-                    #tempkeys = json.loads(keys)
-                    #for data in keys:
-                    #    print(data)
-                    #for data1, data2 in keys:
-                    #    print('hello from data')
-                    #    print(data1)
-                    #    print(data2)
-            
-                        
+                        ##print('key, value: ',val,' ', keys[str(val)])
+                        #create prov entity in range of 'val'; append all properties using 'val' as keys 
+#-----------------------entity for each datapoint                        
+                        #tempname = 'e_datapoint_' + str(val)
+                        #tempname = d1.entity(
+                        #    'prov:datapoint_' + str(val), (
+                        #    (PROV_TYPE, 'datapoint'),
+                        #    ('prov:name', 'datapoint_'+str(val)),
+                        #   ('iknow:'+str(values), keys[str(val)]),
+                        #    )
+                        #)
+
+#-----------------------entity for each 'coloumn' aka for type, child, parent, mapping, subject
+                        e_typedata = d1.entity(
+                                'iknow:type', (
+                                    ('iknow:type', str(phase['selection']['type'])),
+                                )
+                            )
+                        e_childdata = d1.entity(
+                                'iknow:child', (
+                                    ('iknow:child', str(phase['selection']['child'])),
+                                )
+                            )
+                        e_parentdata = d1.entity(
+                                'iknow:parent', (
+                                    ('iknow:parent', str(phase['selection']['parent'])),
+                                )
+                            )
+                        e_mappingdata = d1.entity(
+                                'iknow:mapping', (
+                                    ('iknow:mapping', str(phase['selection']['mapping'])),
+                                )
+                            )
+                        e_subjectdata = d1.entity(
+                                'iknow:subject', (
+                                    ('iknow:subject', str(phase['selection']['subject'])),
+                                )
+                            )
+#----------------------------------------------------------------------                   
+        # for linking we need type, state, actions{input, method, output}                       
         if phase['type'] == 'linking':
             print('testlinking')
+            print(str(phase['actions']['input']))
+            print(str(phase['actions']['method']))
+            print(str(phase['actions']['output']))
+
             e_phase_linking = d1.entity(
                 'prov:phase_linking', (
                     (PROV_TYPE, "process"),
                     ('prov:name', str(phase['type'])),
+                    ('iknow:state', str(phase['state'])),
+                    ('iknow:actions_input', str(phase['actions']['input'])),
+                    ('iknow:actions_method', str(phase['actions']['method'])),
+                    ('iknow:actions_output', str(phase['actions']['output'])),
                 )
             )
         if phase['type'] == 'editcpa':
@@ -272,23 +292,17 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
                 )
             )
         if phase['type'] == 'downloading':
-            print('testdownloading')
+            #print('testdownloading')
             e_phase_downloading = d1.entity(
                 'prov:phase_downloading', (
                     (PROV_TYPE, "process"),
                     ('prov:name', str(phase['type'])),
                 )
             )
-        #name += str(key)
-        #name = d1.entity(
-        #    'prov:SGP',(
-        #    ('prov:test', str(phase)),
-        #    )
-        #)
     
-    print(d1.get_provn())
+    #print(d1.get_provn())
     d1.serialize('article-prov5.ttl', format='rdf', rdf_format='ttl')
-    print(d1.serialize())
+    #print(d1.serialize())
 
     sgp.save()
 
