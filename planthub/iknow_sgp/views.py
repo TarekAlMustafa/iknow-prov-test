@@ -16,6 +16,9 @@ import prov
 from prov.model import ProvDocument, Namespace, Literal, PROV, Identifier, PROV_TYPE
 from prov.dot import prov_to_dot
 
+import json
+import ast
+
 
 #def sgp_create() -> SGP:
 #    """
@@ -194,10 +197,12 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
     
     # testing prov 
     name = ''
+    #json load before loop
+    #print(type(sgp.provenanceRecord.items()))
+    #testJSON = json.loads(str(sgp.provenanceRecord.items()))
     for key, phase in sgp.provenanceRecord.items():
         print(phase)
         if phase['type'] == 'init':
-            print('testinit')
             e_phase_init = d1.entity(
                 'prov:phase_init', (
                     (PROV_TYPE, 'process'),
@@ -208,12 +213,39 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
             #d1.wasGeneratedBy(e_phase_init, a_phase_init, None, {'ex:fct': "save"})
             print('this is another test ' + str(phase['actions']['method']))
 
-            for values in phase['selection']:
-                for keys in phase['selection'][values]:
-                    print(keys)
-                    for data in phase['selection'][values][keys]:
-                        print(data)
+            #if not (phase['selection']['type'] == None):
+            #    for things in phase['selection']['type']:
+            #        print(things)
+            #        for data in phase['selection']['type'][things]:
+            #            print(things[data])
+            print(type(phase['selection']))
 
+
+            # convert phase[selection] to json 
+            print(type(phase['selection']['type']['0']))
+
+
+
+
+            #toJSON = json.loads(str(phase['selection']))
+            #print(toJSON['type'])
+            for values in phase['selection']:
+                print(values)
+                for keys in phase['selection'].values():
+                    print(keys)
+                    print(type(keys))
+                    print('test123')
+                    #print(keys['0'])
+                    for val in keys:
+                        print(keys[str(val)])
+                    #tempkeys = json.loads(keys)
+                    #for data in keys:
+                    #    print(data)
+                    #for data1, data2 in keys:
+                    #    print('hello from data')
+                    #    print(data1)
+                    #    print(data2)
+            
                         
         if phase['type'] == 'linking':
             print('testlinking')
