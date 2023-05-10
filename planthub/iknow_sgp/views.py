@@ -12,12 +12,13 @@ from planthub.iknow_datasets.views import dataset_from_key
 
 from .models import SGP
 
+import os
 import prov
 from prov.model import ProvDocument, Namespace, Literal, PROV, Identifier, PROV_TYPE
 from prov.dot import prov_to_dot
-
+ 
 import json
-import ast
+import ast 
 
 
 #def sgp_create() -> SGP:
@@ -66,16 +67,6 @@ def sgp_set_phase_state(sgp: SGP, new_state: str):
     cur_phase_num = str(len(sgp.provenanceRecord)-1)
     sgp.provenanceRecord[cur_phase_num]["state"] = new_state
 
-    d1 = ProvDocument()
-    d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
-    #e_SGP = d1.entity(
-    #    'prov:SGP',(
-    #        ('prov:type', PROV['Plan']),
-    #))
-
-    #sgp.provenanceDoc["test"]["hello from tarek"] = d1.get_provn()
-
-
     sgp.save()
 
 
@@ -92,9 +83,8 @@ def sgp_append_linking_step(sgp: SGP, input_pk, output_pk, method: str = "iknow-
     sgp.provenanceRecord[next_step]["actions"]["output"] = output_pk
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
     sgp.provenanceRecord[next_step]["state"] = "running"
-    sgp.provenanceRecord[next_step]["actions"]["hello"] = "hello from tarek2"
 
-    print('hello from tarek')
+    sgp_generate_provenance(sgp)
     
     sgp.save()
 
@@ -111,6 +101,8 @@ def append_cleaning_step(sgp: SGP, method, d_pk_in, d_pk_out):
     sgp.provenanceRecord[next_step]["actions"]["input"] = d_pk_in
     sgp.provenanceRecord[next_step]["actions"]["output"] = d_pk_out
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
+
+    sgp_generate_provenance(sgp)
 
     sgp.save()
 
@@ -129,6 +121,8 @@ def sgp_append_mapping_step(sgp: SGP, edits: dict, method: str = "iknow-method")
     sgp.provenanceRecord[next_step]["actions"] = {}
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
 
+    sgp_generate_provenance(sgp)
+
     sgp.save()
 
 
@@ -141,6 +135,8 @@ def sgp_append_cpa_step(sgp: SGP, method: str = "iknow-method"):
     sgp.provenanceRecord[next_step]["type"] = "editcpa"
     sgp.provenanceRecord[next_step]["actions"] = {}
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
+
+    sgp_generate_provenance(sgp)
 
     sgp.save()
 
@@ -155,6 +151,8 @@ def sgp_append_schema_step(sgp: SGP, method: str = "iknow-method"):
     sgp.provenanceRecord[next_step]["actions"] = {}
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
 
+    sgp_generate_provenance(sgp)
+
     sgp.save()
 
 
@@ -164,6 +162,8 @@ def sgp_append_init_step(sgp: SGP, init_data, method: str = "iknow-method"):
     sgp.provenanceRecord[0]["selection"] = init_data
     sgp.provenanceRecord[0]["actions"] = {}
     sgp.provenanceRecord[0]["actions"]["method"] = method
+
+    sgp_generate_provenance(sgp)
 
     sgp.save()
 
@@ -178,6 +178,8 @@ def sgp_append_querybuilding_step(sgp: SGP, method: str = "iknow-method"):
     sgp.provenanceRecord[next_step]["actions"] = {}
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
 
+    sgp_generate_provenance(sgp)
+
     sgp.save()
 
 
@@ -191,9 +193,22 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
     sgp.provenanceRecord[next_step]["actions"] = {}
     sgp.provenanceRecord[next_step]["actions"]["method"] = method
 
+    sgp_generate_provenance(sgp)
+    
+    sgp.save()
+
+def sgp_generate_provenance(sgp: SGP):
+    print('provfunctest')
     d1 = ProvDocument()
     d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
     d1.add_namespace('iknow', 'https://iknow.net')
+
+    e_iknow_sgp = d1.entity(
+        'iknow:sgp', (
+        ('prov:type', PROV['Plan']),
+        )
+    )
+    #e_iknow_sgp.add_asserterd_type('prov:Collection')
     
     # testing prov
     # TODO? json load before loop
@@ -202,13 +217,15 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
 #--------------------------------------------------------------------------
 #get all data from 'init' phase 
         if phase['type'] == 'init':
-            e_phase_init = d1.entity(
-                'prov:phase_init', (
+            a_phase_init = d1.activity(
+                'prov:phase_init', other_attributes=(
+                    ('prov:type', PROV['Collection']),
                     (PROV_TYPE, 'process'),
                     ('prov:name', str(phase['type'])),
+                    ('iknow:method', str(phase['actions']['method'])),
                 )
             )
-            a_init_action = d1.activity('prov:init_action', None, None, {PROV_TYPE: 'iknow:method', 'prov:value': str(phase['actions']['method'])})
+            #a_init_action = d1.activity('prov:init_action', None, None, {PROV_TYPE: 'iknow:method', 'prov:value': str(phase['actions']['method'])})
             #d1.wasGeneratedBy(e_phase_init, a_phase_init, None, {'ex:fct': "save"})
            
             # read data from selection (datapoints, coloumn data type)
@@ -257,6 +274,7 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
                                     ('iknow:subject', str(phase['selection']['subject'])),
                                 )
                             )
+                        
 #----------------------------------------------------------------------                   
         # for linking we need type, state, actions{input, method, output}                       
         if phase['type'] == 'linking':
@@ -265,8 +283,8 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
             print(str(phase['actions']['method']))
             print(str(phase['actions']['output']))
 
-            e_phase_linking = d1.entity(
-                'prov:phase_linking', (
+            a_phase_linking = d1.activity(
+                'prov:phase_linking', other_attributes=(
                     (PROV_TYPE, "process"),
                     ('prov:name', str(phase['type'])),
                     ('iknow:state', str(phase['state'])),
@@ -275,34 +293,80 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
                     ('iknow:actions_output', str(phase['actions']['output'])),
                 )
             )
+#----------------------------------------------------------------------
+        # editcpa
         if phase['type'] == 'editcpa':
             print('testeditcpa')
-            e_phase_editcpa = d1.entity(
-                'prov:phase_edit_cpa', (
+            a_phase_editcpa = d1.activity(
+                'prov:phase_edit_cpa', other_attributes=(
                     (PROV_TYPE, "process"),
                     ('prov:name', str(phase['type'])),
+                    ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+#----------------------------------------------------------------------
+        # schemarefine
         if phase['type'] == 'schemarefine':
             print('testschemarefine')
-            e_phase_schemarefine = d1.entity(
-                'prov:phase_schema_refine', (
+            a_phase_schemarefine = d1.activity(
+                'prov:phase_schema_refine', other_attributes= (
                     (PROV_TYPE, "process"),
                     ('prov:name', str(phase['type'])),
+                    ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+#----------------------------------------------------------------------
         if phase['type'] == 'downloading':
-            #print('testdownloading')
-            e_phase_downloading = d1.entity(
-                'prov:phase_downloading', (
+            a_phase_downloading = d1.activity(
+                'prov:phase_downloading', other_attributes=(
                     (PROV_TYPE, "process"),
                     ('prov:name', str(phase['type'])),
+                    ('iknow:method', str(phase['actions']['method'])),
                 )
             )
-    
+#----------------------------------------------------------------------
+    #relationships --> add pipeline steps as members of SGP     
+    #d1.hadMember(e_iknow_sgp, e_phase_init)
+    #d1.hadMember(e_iknow_sgp, e_phase_linking)
+    #d1.hadMember(e_iknow_sgp, e_phase_editcpa)
+    #d1.hadMember(e_iknow_sgp, e_phase_schemarefine)
+    #d1.hadMember(e_iknow_sgp, e_phase_downloading)
+#----------------------------------------------------------------------
+    #relationships --> pipeline steps influence each other
+    #d1.wasInfluencedBy(e_phase_linking, e_phase_init)
+    #d1.wasInfluencedBy(e_phase_editcpa, e_phase_linking)
+    #d1.wasInfluencedBy(e_phase_schemarefine, e_phase_editcpa)
+    #d1.wasInfluencedBy(e_phase_downloading, e_phase_schemarefine)
+#----------------------------------------------------------------------
+    #relationships --> add selection data as members of init collection            
+    #d1.hadMember(e_phase_init, e_typedata)
+    #d1.hadMember(e_phase_init, e_childdata)
+    #d1.hadMember(e_phase_init, e_parentdata)
+    #d1.hadMember(e_phase_init, e_mappingdata)
+    #d1.hadMember(e_phase_init, e_subjectdata)
+#----------------------------------------------------------------------
+    #relationships --> add activities that lead from 1st to last pipeline step
+    #a_phase_init = d1.activity('iknow:execute_init()')
+    #a_phase_linking = d1.activity('iknow:execute_linking()')
+    #a_phase_editcpa = d1.activity('iknow:execute_editcpa()')
+    #a_phase_schemarefine = d1.activity('iknow:execute_schemarefine()')
+    #a_phase_download = d1.activity('iknow:execute_download()')
+    #d1.wasStartedBy(a_phase_init, e_phase_init)
+    #d1.wasStartedBy(a_phase_linking, e_phase_linking)
+    #d1.wasStartedBy(a_phase_editcpa, e_phase_editcpa)
+    #d1.wasStartedBy(a_phase_schemarefine, e_phase_schemarefine)
+    #d1.wasStartedBy(a_phase_download, e_phase_downloading)
+#----------------------------------------------------------------------    
     #print(d1.get_provn())
     d1.serialize('article-prov5.ttl', format='rdf', rdf_format='ttl')
     #print(d1.serialize())
+#----------------------------------------------------------------------
+    #visualization
+    #add visualization to PATH
+    os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
+
+    dot = prov_to_dot(d1, direction='BT')
+    dot.write_png('provIMG.png')
 
     sgp.save()
 
