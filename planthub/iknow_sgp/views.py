@@ -236,6 +236,7 @@ def sgp_generate_provenance(sgp: SGP):
                 for keys in phase['selection'].values():
                     ##print('data: ', keys)
                     for val in keys:
+                ###DONT DELETE YET        
                         ##print('key, value: ',val,' ', keys[str(val)])
                         #create prov entity in range of 'val'; append all properties using 'val' as keys 
 #-----------------------entity for each datapoint                        
@@ -254,27 +255,42 @@ def sgp_generate_provenance(sgp: SGP):
                                     ('iknow:type', str(phase['selection']['type'])),
                                 )
                             )
+                        
                         e_childdata = d1.entity(
                                 'iknow:child', (
                                     ('iknow:child', str(phase['selection']['child'])),
                                 )
                             )
+                        
                         e_parentdata = d1.entity(
                                 'iknow:parent', (
                                     ('iknow:parent', str(phase['selection']['parent'])),
                                 )
                             )
+                        
                         e_mappingdata = d1.entity(
                                 'iknow:mapping', (
                                     ('iknow:mapping', str(phase['selection']['mapping'])),
                                 )
                             )
+                        
                         e_subjectdata = d1.entity(
                                 'iknow:subject', (
                                     ('iknow:subject', str(phase['selection']['subject'])),
                                 )
                             )
-                        
+            e_selection = d1.entity(
+                'iknow:selection', (
+                ('prov:type', PROV['Collection']),
+                )
+            )
+            d1.hadMember(e_selection, e_typedata)
+            d1.hadMember(e_selection, e_childdata)
+            d1.hadMember(e_selection, e_parentdata)
+            d1.hadMember(e_selection, e_mappingdata)
+            d1.hadMember(e_selection, e_subjectdata)
+
+            d1.wasGeneratedBy(e_selection, a_phase_init)                
 #----------------------------------------------------------------------                   
         # for linking we need type, state, actions{input, method, output}                       
         if phase['type'] == 'linking':
@@ -293,6 +309,14 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:actions_output', str(phase['actions']['output'])),
                 )
             )
+            d1.used(a_phase_linking, e_selection)
+            e_linking_output = d1.entity(
+                'iknow:linking_output', (
+                ('prov:id', str(phase['actions']['output'])),
+                )
+            )
+            d1.wasGeneratedBy(e_linking_output, a_phase_linking)
+            d1.wasDerivedFrom(e_linking_output, e_selection)
 #----------------------------------------------------------------------
         # editcpa
         if phase['type'] == 'editcpa':
@@ -304,6 +328,14 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+            d1.used(a_phase_editcpa, e_linking_output)
+            e_editcpa_output = d1.entity(
+                'iknow:editcpa_output', (
+                ('prov:id', 'PLACEHOLDER'),
+                )
+            )
+            d1.wasGeneratedBy(e_editcpa_output, a_phase_editcpa)
+            d1.wasDerivedFrom(e_editcpa_output, e_linking_output)
 #----------------------------------------------------------------------
         # schemarefine
         if phase['type'] == 'schemarefine':
@@ -315,6 +347,14 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+            d1.used(a_phase_schemarefine, e_editcpa_output)
+            e_schemarefine_output = d1.entity(
+                'iknow:schemarefine_output', (
+                ('prov:id', 'PLACEHOLDER'),
+                )
+            )
+            d1.wasGeneratedBy(e_schemarefine_output, a_phase_schemarefine)
+            d1.wasDerivedFrom(e_schemarefine_output, e_editcpa_output)
 #----------------------------------------------------------------------
         if phase['type'] == 'downloading':
             a_phase_downloading = d1.activity(
@@ -324,6 +364,14 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+            d1.used(a_phase_downloading, e_schemarefine_output)
+            e_downloading_output = d1.entity(
+                'iknow:downloading_output', (
+                ('prov:status', 'completed'),
+                )
+            )
+            d1.wasGeneratedBy(e_downloading_output, a_phase_downloading)
+            d1.wasDerivedFrom(e_downloading_output, e_schemarefine_output)
 #----------------------------------------------------------------------
     #relationships --> add pipeline steps as members of SGP     
     #d1.hadMember(e_iknow_sgp, e_phase_init)
@@ -365,7 +413,7 @@ def sgp_generate_provenance(sgp: SGP):
     #add visualization to PATH
     os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
 
-    dot = prov_to_dot(d1, direction='BT')
+    dot = prov_to_dot(d1, direction='RL')
     dot.write_png('provIMG.png')
 
     sgp.save()
