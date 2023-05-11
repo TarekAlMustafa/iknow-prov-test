@@ -11,25 +11,18 @@ from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import dataset_from_key
 
 from .models import SGP
+
 from planthub.iknow_sgpc.models import SGPC
+
+
 
 import os
 import prov
 from prov.model import ProvDocument, Namespace, Literal, PROV, Identifier, PROV_TYPE
 from prov.dot import prov_to_dot
- 
-import json
-import ast 
 
 
-#def sgp_create() -> SGP:
-#    """
-#    Creates a new sgp.
-#    """
-#    new_sgp = SGP()
-#    new_sgp.save()
-
-#    return new_sgp
+#from planthub.iknow_sgpc.views import sgpc_info 
 
 def sgp_create() -> SGP:
     """
@@ -199,10 +192,15 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
     sgp.save()
 
 def sgp_generate_provenance(sgp: SGP):
-    print('provfunctest')
+    print(SGPC.objects.filter(associated_sgprojects__id = sgp.pk))
+    collection = SGPC.objects.filter(associated_sgprojects__id = sgp.pk)
+    print(collection[0].bioprojectname)
     d1 = ProvDocument()
     d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
     d1.add_namespace('iknow', 'https://planthub.idiv.de/iknow/wiki/')
+
+    
+    
 
     e_iknow_sgpc = d1.entity(
         'iknow:sgpc', (
@@ -330,7 +328,7 @@ def sgp_generate_provenance(sgp: SGP):
             d1.used(a_phase_linking, e_selection)
             e_linking_output = d1.entity(
                 'iknow:linking_output', (
-                ('prov:id', str(phase['actions']['output'])),
+                ('prov:id', str(sgp_get_mapping_file(sgp))),
                 )
             )
             d1.wasGeneratedBy(e_linking_output, a_phase_linking)
@@ -408,8 +406,12 @@ def sgp_generate_provenance(sgp: SGP):
     #print(sgp.source_dataset)
     print('--------------')
     print(str(sgp.source_dataset.all()[0]))
+    print(sgp.pk)
+    print(sgp_from_key(sgp.pk))
+    print('ssssssssss')
     
-    print(str())
+    
+    #print(str(SGP.objects.get(id=key)))
 
     sgp.save()
 

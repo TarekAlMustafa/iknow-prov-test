@@ -127,7 +127,8 @@ class UploadToSgpcView(APIView):
             new_sgp.source_dataset.add(new_dataset)
             new_sgp.original_filename = filename
             ### hello from tarek; adding bioproject name to sgp 
-            new_sgp.associated_bioproject = str(sgpc.bioprojectname)
+            #new_sgp.associated_bioproject = str(sgpc.bioprojectname)
+            new_sgp.associated_bioproject = str(sgpc)
             sgpc.associated_sgprojects.add(new_sgp)
 
 
