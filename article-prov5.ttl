@@ -1,21 +1,33 @@
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
 @prefix iknow: <https://planthub.idiv.de/iknow/wiki/> .
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-iknow:selection a prov:Collection,
-        prov:Entity ;
-    prov:hadMember iknow:child,
-        iknow:mapping,
-        iknow:parent,
-        iknow:subject,
-        iknow:type ;
-    prov:wasDerivedFrom iknow:source_dataset ;
-    prov:wasGeneratedBy prov:phase_init .
+iknow:generate_TTL a prov:Entity ;
+    prov:status "completed"^^xsd:string ;
+    prov:wasDerivedFrom iknow:schemarefine_output ;
+    prov:wasGeneratedBy prov:phase_generate_TTL .
 
 iknow:sgpc a prov:Collection,
         prov:Entity ;
+    prov:created "2023-05-11"^^xsd:date ;
     prov:hadMember iknow:sgp ;
-    prov:name "SGPC object (143)"^^xsd:string .
+    prov:name "Phenobs"^^xsd:string ;
+    prov:wasAttributedTo iknow:admin .
+
+prov:phase_edit_cpa a prov:Activity,
+        "process"^^xsd:string ;
+    prov:name "editcpa"^^xsd:string ;
+    prov:used iknow:linking_output ;
+    prov:wasAssociatedWith iknow:sgp ;
+    iknow:method "iknow-method"^^xsd:string .
+
+prov:phase_generate_TTL a prov:Activity,
+        "process"^^xsd:string ;
+    prov:name "downloading"^^xsd:string ;
+    prov:used iknow:schemarefine_output ;
+    prov:wasAssociatedWith iknow:sgp ;
+    iknow:method "iknow-method"^^xsd:string .
 
 prov:phase_init a prov:Activity,
         prov:Collection,
@@ -24,6 +36,27 @@ prov:phase_init a prov:Activity,
     prov:used iknow:source_dataset ;
     prov:wasAssociatedWith iknow:sgp ;
     iknow:method "iknow-method"^^xsd:string .
+
+prov:phase_linking a prov:Activity,
+        "process"^^xsd:string ;
+    prov:name "linking"^^xsd:string ;
+    prov:used iknow:selection ;
+    prov:wasAssociatedWith iknow:sgp ;
+    iknow:actions_input "259"^^xsd:string ;
+    iknow:actions_method "Direct API"^^xsd:string ;
+    iknow:actions_output "260"^^xsd:string ;
+    iknow:state "done"^^xsd:string .
+
+prov:phase_schema_refine a prov:Activity,
+        "process"^^xsd:string ;
+    prov:name "schemarefine"^^xsd:string ;
+    prov:used iknow:editcpa_output ;
+    prov:wasAssociatedWith iknow:sgp ;
+    iknow:method "iknow-method"^^xsd:string .
+
+iknow:admin a prov:Agent,
+        prov:Person ;
+    foaf:givenName "tarekadmin"^^xsd:string .
 
 iknow:child a prov:Entity ;
     iknow:child "{'0': 'Garden', '1': 'Garden', '2': 'Garden', '3': 'Garden', '4': 'Garden'}"^^xsd:string .
@@ -38,12 +71,36 @@ iknow:subject a prov:Entity ;
     iknow:subject "{}"^^xsd:string .
 
 iknow:type a prov:Entity ;
-    iknow:type "{'0': 'Integer', '1': 'Integer', '2': 'Integer', '3': 'Integer', '4': 'Integer'}"^^xsd:string .
+    iknow:type "{'0': 'Integer', '1': 'String', '2': 'Integer', '3': 'Integer', '4': 'Integer'}"^^xsd:string .
 
-iknow:sgp a prov:Entity,
-        prov:Plan ;
-    iknow:bioproject "SGPC object (143)"^^xsd:string .
+iknow:editcpa_output a prov:Entity ;
+    prov:id "PLACEHOLDER"^^xsd:string ;
+    prov:wasDerivedFrom iknow:linking_output ;
+    prov:wasGeneratedBy prov:phase_edit_cpa .
+
+iknow:linking_output a prov:Entity ;
+    prov:id "Dataset object (260)"^^xsd:string ;
+    prov:wasDerivedFrom iknow:selection ;
+    prov:wasGeneratedBy prov:phase_linking .
+
+iknow:schemarefine_output a prov:Entity ;
+    prov:id "PLACEHOLDER"^^xsd:string ;
+    prov:wasDerivedFrom iknow:editcpa_output ;
+    prov:wasGeneratedBy prov:phase_schema_refine .
+
+iknow:selection a prov:Collection,
+        prov:Entity ;
+    prov:hadMember iknow:child,
+        iknow:mapping,
+        iknow:parent,
+        iknow:subject,
+        iknow:type ;
+    prov:wasDerivedFrom iknow:source_dataset ;
+    prov:wasGeneratedBy prov:phase_init .
 
 iknow:source_dataset a prov:Entity ;
     iknow:source "testexample3.csv"^^xsd:string .
+
+iknow:sgp a prov:Entity,
+        prov:Plan .
 

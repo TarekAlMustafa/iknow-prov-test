@@ -195,30 +195,35 @@ def sgp_generate_provenance(sgp: SGP):
     print(SGPC.objects.filter(associated_sgprojects__id = sgp.pk))
     collection = SGPC.objects.filter(associated_sgprojects__id = sgp.pk)
     print(collection[0].bioprojectname)
+    print(collection[0].createdBy)
+    print(collection[0].createdAt)
+
     d1 = ProvDocument()
     d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
     d1.add_namespace('iknow', 'https://planthub.idiv.de/iknow/wiki/')
+    d1.add_namespace("foaf", "http://xmlns.com/foaf/0.1/")
 
-    
-    
-
+    ag_admin = d1.agent(
+        'iknow:admin', (
+        ('prov:type', PROV['Person']),
+        ('foaf:givenName', collection[0].createdBy),
+        )
+    )
     e_iknow_sgpc = d1.entity(
         'iknow:sgpc', (
         ('prov:type', PROV['Collection']),
-        ('prov:name', sgp.associated_bioproject)
+        ('prov:name', collection[0].bioprojectname),
+        ('prov:created', collection[0].createdAt),
         )
     )
     e_iknow_sgp = d1.entity(
         'iknow:sgp', (
         ('prov:type', PROV['Plan']),
-        ('iknow:bioproject', sgp.associated_bioproject)
         )
     )
+    d1.wasAttributedTo(e_iknow_sgpc, ag_admin)
     d1.hadMember(e_iknow_sgpc, e_iknow_sgp)
-    #e_iknow_sgp.add_asserterd_type('prov:Collection')
-    
-    # testing prov
-    # TODO? json load before loop
+
     for key, phase in sgp.provenanceRecord.items():
         print(phase)
 #--------------------------------------------------------------------------
@@ -375,22 +380,22 @@ def sgp_generate_provenance(sgp: SGP):
             d1.wasDerivedFrom(e_schemarefine_output, e_editcpa_output)
 #----------------------------------------------------------------------
         if phase['type'] == 'downloading':
-            a_phase_downloading = d1.activity(
-                'prov:phase_downloading', other_attributes=(
+            a_phase_generate_TTL = d1.activity(
+                'prov:phase_generate_TTL', other_attributes=(
                     (PROV_TYPE, "process"),
                     ('prov:name', str(phase['type'])),
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
-            d1.wasAssociatedWith(a_phase_downloading, e_iknow_sgp)
-            d1.used(a_phase_downloading, e_schemarefine_output)
-            e_downloading_output = d1.entity(
-                'iknow:downloading_output', (
+            d1.wasAssociatedWith(a_phase_generate_TTL, e_iknow_sgp)
+            d1.used(a_phase_generate_TTL, e_schemarefine_output)
+            e_generate_TTL = d1.entity(
+                'iknow:generate_TTL', (
                 ('prov:status', 'completed'),
                 )
             )
-            d1.wasGeneratedBy(e_downloading_output, a_phase_downloading)
-            d1.wasDerivedFrom(e_downloading_output, e_schemarefine_output)
+            d1.wasGeneratedBy(e_generate_TTL, a_phase_generate_TTL)
+            d1.wasDerivedFrom(e_generate_TTL, e_schemarefine_output)
 #----------------------------------------------------------------------    
     #print(d1.get_provn())
     d1.serialize('article-prov5.ttl', format='rdf', rdf_format='ttl')

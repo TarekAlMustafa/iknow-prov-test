@@ -9,8 +9,6 @@ from planthub.iknow_datasets.models import Dataset
 
 
 class SGP(models.Model):
-    # tarek: name used for provenance
-    associated_bioproject = models.CharField(max_length=4096, default="")
 
     # the dataset source dataset for this SGP (the initial dataset to work with)
     source_dataset = models.ManyToManyField(Dataset)
