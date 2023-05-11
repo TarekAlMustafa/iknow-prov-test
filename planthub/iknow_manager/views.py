@@ -126,7 +126,10 @@ class UploadToSgpcView(APIView):
             new_sgp = sgp_create()
             new_sgp.source_dataset.add(new_dataset)
             new_sgp.original_filename = filename
+            ### hello from tarek; adding bioproject name to sgp 
+            new_sgp.associated_bioproject = str(sgpc.bioprojectname)
             sgpc.associated_sgprojects.add(new_sgp)
+
 
             header = self.get_dataset_header(new_dataset.file_field.path)
             new_sgp.original_table_header = header

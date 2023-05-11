@@ -11,6 +11,7 @@ from planthub.iknow_datasets.models import Dataset
 from planthub.iknow_datasets.views import dataset_from_key
 
 from .models import SGP
+from planthub.iknow_sgpc.models import SGPC
 
 import os
 import prov
@@ -201,13 +202,21 @@ def sgp_generate_provenance(sgp: SGP):
     print('provfunctest')
     d1 = ProvDocument()
     d1.add_namespace('prov', 'http://www.w3.org/ns/prov#')
-    d1.add_namespace('iknow', 'https://iknow.net')
+    d1.add_namespace('iknow', 'https://planthub.idiv.de/iknow/wiki/')
 
+    e_iknow_sgpc = d1.entity(
+        'iknow:sgpc', (
+        ('prov:type', PROV['Collection']),
+        ('prov:name', sgp.associated_bioproject)
+        )
+    )
     e_iknow_sgp = d1.entity(
         'iknow:sgp', (
         ('prov:type', PROV['Plan']),
+        ('iknow:bioproject', sgp.associated_bioproject)
         )
     )
+    d1.hadMember(e_iknow_sgpc, e_iknow_sgp)
     #e_iknow_sgp.add_asserterd_type('prov:Collection')
     
     # testing prov
@@ -225,6 +234,13 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+            e_source_dataset = d1.entity(
+                'iknow:source_dataset', (
+                ('iknow:source', str(sgp.original_filename)),
+                )
+            )
+            d1.used(a_phase_init, e_source_dataset)
+            d1.wasAssociatedWith(a_phase_init, e_iknow_sgp)
             #a_init_action = d1.activity('prov:init_action', None, None, {PROV_TYPE: 'iknow:method', 'prov:value': str(phase['actions']['method'])})
             #d1.wasGeneratedBy(e_phase_init, a_phase_init, None, {'ex:fct': "save"})
            
@@ -290,7 +306,8 @@ def sgp_generate_provenance(sgp: SGP):
             d1.hadMember(e_selection, e_mappingdata)
             d1.hadMember(e_selection, e_subjectdata)
 
-            d1.wasGeneratedBy(e_selection, a_phase_init)                
+            d1.wasGeneratedBy(e_selection, a_phase_init)
+            d1.wasDerivedFrom(e_selection, e_source_dataset)                
 #----------------------------------------------------------------------                   
         # for linking we need type, state, actions{input, method, output}                       
         if phase['type'] == 'linking':
@@ -309,6 +326,7 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:actions_output', str(phase['actions']['output'])),
                 )
             )
+            d1.wasAssociatedWith(a_phase_linking, e_iknow_sgp)
             d1.used(a_phase_linking, e_selection)
             e_linking_output = d1.entity(
                 'iknow:linking_output', (
@@ -328,6 +346,7 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+            d1.wasAssociatedWith(a_phase_editcpa, e_iknow_sgp)
             d1.used(a_phase_editcpa, e_linking_output)
             e_editcpa_output = d1.entity(
                 'iknow:editcpa_output', (
@@ -347,6 +366,7 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+            d1.wasAssociatedWith(a_phase_schemarefine, e_iknow_sgp)
             d1.used(a_phase_schemarefine, e_editcpa_output)
             e_schemarefine_output = d1.entity(
                 'iknow:schemarefine_output', (
@@ -364,6 +384,7 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
+            d1.wasAssociatedWith(a_phase_downloading, e_iknow_sgp)
             d1.used(a_phase_downloading, e_schemarefine_output)
             e_downloading_output = d1.entity(
                 'iknow:downloading_output', (
@@ -372,38 +393,6 @@ def sgp_generate_provenance(sgp: SGP):
             )
             d1.wasGeneratedBy(e_downloading_output, a_phase_downloading)
             d1.wasDerivedFrom(e_downloading_output, e_schemarefine_output)
-#----------------------------------------------------------------------
-    #relationships --> add pipeline steps as members of SGP     
-    #d1.hadMember(e_iknow_sgp, e_phase_init)
-    #d1.hadMember(e_iknow_sgp, e_phase_linking)
-    #d1.hadMember(e_iknow_sgp, e_phase_editcpa)
-    #d1.hadMember(e_iknow_sgp, e_phase_schemarefine)
-    #d1.hadMember(e_iknow_sgp, e_phase_downloading)
-#----------------------------------------------------------------------
-    #relationships --> pipeline steps influence each other
-    #d1.wasInfluencedBy(e_phase_linking, e_phase_init)
-    #d1.wasInfluencedBy(e_phase_editcpa, e_phase_linking)
-    #d1.wasInfluencedBy(e_phase_schemarefine, e_phase_editcpa)
-    #d1.wasInfluencedBy(e_phase_downloading, e_phase_schemarefine)
-#----------------------------------------------------------------------
-    #relationships --> add selection data as members of init collection            
-    #d1.hadMember(e_phase_init, e_typedata)
-    #d1.hadMember(e_phase_init, e_childdata)
-    #d1.hadMember(e_phase_init, e_parentdata)
-    #d1.hadMember(e_phase_init, e_mappingdata)
-    #d1.hadMember(e_phase_init, e_subjectdata)
-#----------------------------------------------------------------------
-    #relationships --> add activities that lead from 1st to last pipeline step
-    #a_phase_init = d1.activity('iknow:execute_init()')
-    #a_phase_linking = d1.activity('iknow:execute_linking()')
-    #a_phase_editcpa = d1.activity('iknow:execute_editcpa()')
-    #a_phase_schemarefine = d1.activity('iknow:execute_schemarefine()')
-    #a_phase_download = d1.activity('iknow:execute_download()')
-    #d1.wasStartedBy(a_phase_init, e_phase_init)
-    #d1.wasStartedBy(a_phase_linking, e_phase_linking)
-    #d1.wasStartedBy(a_phase_editcpa, e_phase_editcpa)
-    #d1.wasStartedBy(a_phase_schemarefine, e_phase_schemarefine)
-    #d1.wasStartedBy(a_phase_download, e_phase_downloading)
 #----------------------------------------------------------------------    
     #print(d1.get_provn())
     d1.serialize('article-prov5.ttl', format='rdf', rdf_format='ttl')
@@ -415,6 +404,12 @@ def sgp_generate_provenance(sgp: SGP):
 
     dot = prov_to_dot(d1, direction='RL')
     dot.write_png('provIMG.png')
+
+    #print(sgp.source_dataset)
+    print('--------------')
+    print(str(sgp.source_dataset.all()[0]))
+    
+    print(str())
 
     sgp.save()
 
