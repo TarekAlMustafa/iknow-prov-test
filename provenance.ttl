@@ -31,7 +31,7 @@ iknow:selection_tool_config a prov:Entity ;
 
 iknow:sgpc a prov:Collection,
         prov:Entity ;
-    prov:created "2023-05-12"^^xsd:date ;
+    prov:created "2023-05-16"^^xsd:date ;
     prov:hadMember iknow:sgp ;
     prov:name "Phenobs"^^xsd:string ;
     prov:wasAttributedTo iknow:admin .
@@ -67,9 +67,9 @@ prov:phase_linking a prov:Activity,
     prov:used iknow:selection ;
     prov:wasAssociatedWith iknow:linking_tool,
         iknow:sgp ;
-    iknow:actions_input "269"^^xsd:string ;
+    iknow:actions_input "271"^^xsd:string ;
     iknow:actions_method "Direct API"^^xsd:string ;
-    iknow:actions_output "270"^^xsd:string ;
+    iknow:actions_output "272"^^xsd:string ;
     iknow:state "done"^^xsd:string .
 
 prov:phase_schema_refine a prov:Activity,
@@ -109,7 +109,7 @@ iknow:editcpa_tool a prov:Agent,
     iknow:editcpa_tool "iknow-method"^^xsd:string .
 
 iknow:linking_output a prov:Entity ;
-    prov:id "Dataset object (270)"^^xsd:string ;
+    prov:id "Dataset object (272)"^^xsd:string ;
     prov:wasDerivedFrom iknow:selection ;
     prov:wasGeneratedBy prov:phase_linking .
 

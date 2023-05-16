@@ -468,7 +468,7 @@ def sgp_generate_provenance(sgp: SGP):
     #add visualization to PATH
     os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
 
-    dot = prov_to_dot(d1, show_element_attributes = 0, direction='BT')
+    dot = prov_to_dot(d1, show_element_attributes = 1, direction='BT')
     dot.write_png('provIMG.png')
 
     #print(sgp.source_dataset)
