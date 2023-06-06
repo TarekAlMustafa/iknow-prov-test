@@ -1,0 +1,6 @@
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+prov:0 a prov:Entity .
+
+prov:1 a prov:Entity .
+

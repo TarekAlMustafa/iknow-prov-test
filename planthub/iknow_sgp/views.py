@@ -192,6 +192,49 @@ def sgp_append_downloading_step(sgp: SGP, method: str = "iknow-method"):
     sgp.save()
 
 def sgp_generate_provenance(sgp: SGP):
+#----------------------------------------------------------------------
+    ### paper figure
+    """
+    d2 = ProvDocument()
+    d2.add_namespace('prov', 'http://www.w3.org/ns/prov#')
+    d2.add_namespace('iknow', 'https://planthub.idiv.de/iknow/wiki/')
+    d2.add_namespace("foaf", "http://xmlns.com/foaf/0.1/")
+    
+
+    ag_example = d2.agent(
+        'prov:Agent', (
+        ('prov:type', 'Agent'),
+        )
+    )
+    
+    a_example = d2.activity(
+        'prov:Activity', other_attributes=(
+        ('prov:type', 'Activity'),
+        )
+    )
+    
+    e_example1 = d2.entity(
+        'prov:Entity1', other_attributes=(
+        ('prov:type', 'Entity'),
+        )
+    )
+
+    e_example2 = d2.entity(
+        'prov:Entity2', other_attributes=(
+        ('prov:type', 'Entity'),
+        )
+    )
+
+    d2.used(a_example, e_example1)
+    d2.wasGeneratedBy(e_example2, a_example)
+    d2.wasAttributedTo(a_example, ag_example)
+    d2.wasDerivedFrom(e_example2, e_example1)
+    
+    #visualization
+    #add visualization to PATH
+    os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
+    dot = prov_to_dot(d2, show_element_attributes = 0, direction='BT')
+    dot.write_png('provIMG2.png')"""
 #--------------------------------------------------------------------------
     #get SGPC data
     collection = SGPC.objects.filter(associated_sgprojects__id = sgp.pk)
@@ -203,23 +246,30 @@ def sgp_generate_provenance(sgp: SGP):
     d1.add_namespace("foaf", "http://xmlns.com/foaf/0.1/")
 
     ag_admin = d1.agent(
-        'iknow:admin', (
+        'iknow:user', (
         ('prov:type', PROV['Person']),
         ('foaf:givenName', collection[0].createdBy),
         )
     )
     e_iknow_sgpc = d1.entity(
-        'iknow:sgpc', (
+        'iknow:main-KG', (
         ('prov:type', PROV['Collection']),
         ('prov:name', collection[0].bioprojectname),
         ('prov:created', collection[0].createdAt),
         )
     )
     e_iknow_sgp = d1.entity(
-        'iknow:sgp', (
+        'iknow:sub-KG', (
+        ('prov:type', PROV['Entity']),
+        ('prov:hadPlan', 'iknow_workflow'),
+        )
+    )
+    e_iknow_workflow = d1.entity(
+        'iknow:workflow', (
         ('prov:type', PROV['Plan']),
         )
     )
+
     d1.wasAttributedTo(e_iknow_sgpc, ag_admin)
     d1.hadMember(e_iknow_sgpc, e_iknow_sgp)
 
@@ -229,7 +279,8 @@ def sgp_generate_provenance(sgp: SGP):
 #get all data from 'init' phase 
         if phase['type'] == 'init':
             a_phase_init = d1.activity(
-                'prov:phase_init', other_attributes=(
+                #'prov:phase_init', other_attributes=(
+                'iknow:phase_i', other_attributes=(
                     ('prov:type', PROV['Collection']),
                     (PROV_TYPE, 'process'),
                     ('prov:name', str(phase['type'])),
@@ -237,12 +288,20 @@ def sgp_generate_provenance(sgp: SGP):
                 )
             )
             e_source_dataset = d1.entity(
-                'iknow:source_dataset', (
+                'iknow:input_i', (
+                #'iknow:source_dataset', (
                 ('iknow:source', str(sgp.original_filename)),
                 )
             )
+            e_config_init = d1.entity(
+                #'prov:config_init', (
+                'iknow:config_i', (
+                    ('iknow:config', 'default'),
+                )
+            )
             d1.used(a_phase_init, e_source_dataset)
-            d1.wasAssociatedWith(a_phase_init, e_iknow_sgp)         
+            d1.used(a_phase_init, e_config_init)
+            d1.wasAssociatedWith(a_phase_init, e_iknow_sgp, e_iknow_workflow)         
             # read data from selection (datapoints, coloumn data type)
     #----------------------------------------------------------------------
     #get all data from 'selection' subfield; turn the data into entities
@@ -265,6 +324,7 @@ def sgp_generate_provenance(sgp: SGP):
                         #)
 
 #-----------------------entity for each 'coloumn' aka for type, child, parent, mapping, subject
+                        """
                         e_typedata = d1.entity(
                                 'iknow:type', (
                                     ('iknow:type', str(phase['selection']['type'])),
@@ -293,31 +353,34 @@ def sgp_generate_provenance(sgp: SGP):
                                 'iknow:subject', (
                                     ('iknow:subject', str(phase['selection']['subject'])),
                                 )
-                            )
+                            )"""
             e_selection = d1.entity(
-                'iknow:selection', (
+                #'iknow:selection', (
+                'iknow:output_i', (
                 ('prov:type', PROV['Collection']),
                 )
             )
             ag_selection_tool = d1.agent(
-                'iknow:selection_tool', (
+                #'iknow:selection_tool', (
+                'iknow:tool_i', (
                     ('prov:type', PROV['SoftwareAgent']),
                     ('iknow:selection_tool', str(phase['actions']['method'])),
                 )
             )
             e_selection_tool_config = d1.entity(
-                'iknow:selection_tool_config',(
+                #'iknow:selection_tool_config',(
+                'iknow:tool_config_i',(
                 ('iknow:toolconfig', str(phase['actions']['method']) + '-config'),
                 )
             )
             d1.wasAttributedTo(e_selection_tool_config, ag_selection_tool)
             d1.wasAssociatedWith(a_phase_init, ag_selection_tool)
 
-            d1.hadMember(e_selection, e_typedata)
-            d1.hadMember(e_selection, e_childdata)
-            d1.hadMember(e_selection, e_parentdata)
-            d1.hadMember(e_selection, e_mappingdata)
-            d1.hadMember(e_selection, e_subjectdata)
+            #d1.hadMember(e_selection, e_typedata)
+            #d1.hadMember(e_selection, e_childdata)
+            #d1.hadMember(e_selection, e_parentdata)
+            #d1.hadMember(e_selection, e_mappingdata)
+            #d1.hadMember(e_selection, e_subjectdata)
 
             d1.wasGeneratedBy(e_selection, a_phase_init)
             d1.wasDerivedFrom(e_selection, e_source_dataset)                
@@ -339,7 +402,7 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:actions_output', str(phase['actions']['output'])),
                 )
             )
-            d1.wasAssociatedWith(a_phase_linking, e_iknow_sgp)
+            d1.wasAssociatedWith(a_phase_linking, e_iknow_sgp, e_iknow_workflow)
             d1.used(a_phase_linking, e_selection)
             e_linking_output = d1.entity(
                 'iknow:linking_output', (
@@ -357,6 +420,12 @@ def sgp_generate_provenance(sgp: SGP):
                 ('iknow:toolconfig', str(phase['actions']['method']) + '-config'),
                 )
             )
+            e_config_linking = d1.entity(
+                'prov:config_linking', (
+                    ('iknow:config', 'default'),
+                )
+            )
+            d1.used(a_phase_linking, e_config_linking)
             d1.wasAttributedTo(e_linking_tool_config, ag_linking_tool)
             d1.wasAssociatedWith(a_phase_linking, ag_linking_tool)
             d1.wasGeneratedBy(e_linking_output, a_phase_linking)
@@ -372,7 +441,7 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
-            d1.wasAssociatedWith(a_phase_editcpa, e_iknow_sgp)
+            d1.wasAssociatedWith(a_phase_editcpa, e_iknow_sgp, e_iknow_workflow)
             d1.used(a_phase_editcpa, e_linking_output)
             e_editcpa_output = d1.entity(
                 'iknow:editcpa_output', (
@@ -390,6 +459,12 @@ def sgp_generate_provenance(sgp: SGP):
                 ('iknow:toolconfig', str(phase['actions']['method']) + '-config'),
                 )
             )
+            e_config_editcpa = d1.entity(
+                'prov:config_editcpa', (
+                    ('iknow:config', 'default'),
+                )
+            )
+            d1.used(a_phase_editcpa, e_config_editcpa)
             d1.wasAttributedTo(e_editcpa_tool_config, ag_editcpa_tool)
             d1.wasAssociatedWith(a_phase_editcpa, ag_editcpa_tool)
             d1.wasGeneratedBy(e_editcpa_output, a_phase_editcpa)
@@ -405,7 +480,7 @@ def sgp_generate_provenance(sgp: SGP):
                     ('iknow:method', str(phase['actions']['method'])),
                 )
             )
-            d1.wasAssociatedWith(a_phase_schemarefine, e_iknow_sgp)
+            d1.wasAssociatedWith(a_phase_schemarefine, e_iknow_sgp, e_iknow_workflow)
             d1.used(a_phase_schemarefine, e_editcpa_output)
             e_schemarefine_output = d1.entity(
                 'iknow:schemarefine_output', (
@@ -423,6 +498,12 @@ def sgp_generate_provenance(sgp: SGP):
                 ('iknow:toolconfig', str(phase['actions']['method']) + '-config'),
                 )
             )
+            e_config_schemarefine = d1.entity(
+                'prov:config_schemarefine', (
+                    ('iknow:config', 'default'),
+                )
+            )
+            d1.used(a_phase_schemarefine, e_config_schemarefine)
             d1.wasAttributedTo(e_schemarefine_tool_config, ag_schemarefine_tool)
             d1.wasAssociatedWith(a_phase_schemarefine, ag_schemarefine_tool)
             d1.wasGeneratedBy(e_schemarefine_output, a_phase_schemarefine)
@@ -449,7 +530,7 @@ def sgp_generate_provenance(sgp: SGP):
             )
             d1.wasAttributedTo(e_saving_tool_config, ag_saving_tool)
             d1.wasAssociatedWith(a_phase_generate_TTL, ag_saving_tool)
-            d1.wasAssociatedWith(a_phase_generate_TTL, e_iknow_sgp)
+            d1.wasAssociatedWith(a_phase_generate_TTL, e_iknow_sgp, e_iknow_workflow)
             d1.used(a_phase_generate_TTL, e_schemarefine_output)
             e_provenance = d1.entity(
                 'iknow:provenance', (
@@ -457,6 +538,12 @@ def sgp_generate_provenance(sgp: SGP):
                 ('prov:name', 'provenance.ttl'),
                 )
             )
+            e_config_generateTTL = d1.entity(
+                'prov:config_generateTTL', (
+                    ('iknow:config', 'default'),
+                )
+            )
+            d1.used(a_phase_generate_TTL, e_config_generateTTL)
             d1.wasGeneratedBy(e_provenance, a_phase_generate_TTL)
             d1.wasDerivedFrom(e_provenance, e_schemarefine_output)
 #----------------------------------------------------------------------    
@@ -468,7 +555,7 @@ def sgp_generate_provenance(sgp: SGP):
     #add visualization to PATH
     os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
 
-    dot = prov_to_dot(d1, show_element_attributes = 1, direction='BT')
+    dot = prov_to_dot(d1, show_element_attributes = 0, direction='BT')
     dot.write_png('provIMG.png')
 
     #print(sgp.source_dataset)
@@ -477,8 +564,7 @@ def sgp_generate_provenance(sgp: SGP):
     print(sgp.pk)
     print(sgp_from_key(sgp.pk))
     print('ssssssssss')
-    
-    
+
     #print(str(SGP.objects.get(id=key)))
 
     sgp.save()

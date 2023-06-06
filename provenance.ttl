@@ -3,150 +3,51 @@
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-iknow:editcpa_tool_config a prov:Entity ;
-    prov:wasAttributedTo iknow:editcpa_tool ;
-    iknow:toolconfig "iknow-method-config"^^xsd:string .
-
-iknow:linking_tool_config a prov:Entity ;
-    prov:wasAttributedTo iknow:linking_tool ;
-    iknow:toolconfig "Direct API-config"^^xsd:string .
-
-iknow:provenance a prov:Entity,
-        prov:File ;
-    prov:name "provenance.ttl"^^xsd:string ;
-    prov:wasDerivedFrom iknow:schemarefine_output ;
-    prov:wasGeneratedBy prov:phase_generate_TTL .
-
-iknow:saving_tool_config a prov:Entity ;
-    prov:wasAttributedTo iknow:saving_tool ;
-    iknow:toolconfig "iknow-method-config"^^xsd:string .
-
-iknow:schemarefine_tool_config a prov:Entity ;
-    prov:wasAttributedTo iknow:schemarefine_tool ;
-    iknow:toolconfig "iknow-method-config"^^xsd:string .
-
-iknow:selection_tool_config a prov:Entity ;
-    prov:wasAttributedTo iknow:selection_tool ;
-    iknow:toolconfig "iknow-method-config"^^xsd:string .
-
-iknow:sgpc a prov:Collection,
-        prov:Entity ;
-    prov:created "2023-05-16"^^xsd:date ;
-    prov:hadMember iknow:sgp ;
-    prov:name "Phenobs"^^xsd:string ;
-    prov:wasAttributedTo iknow:admin .
-
-prov:phase_edit_cpa a prov:Activity,
-        "process"^^xsd:string ;
-    prov:name "editcpa"^^xsd:string ;
-    prov:used iknow:linking_output ;
-    prov:wasAssociatedWith iknow:editcpa_tool,
-        iknow:sgp ;
-    iknow:method "iknow-method"^^xsd:string .
-
-prov:phase_generate_TTL a prov:Activity,
-        "process"^^xsd:string ;
-    prov:name "downloading"^^xsd:string ;
-    prov:used iknow:schemarefine_output ;
-    prov:wasAssociatedWith iknow:saving_tool,
-        iknow:sgp ;
-    iknow:method "iknow-method"^^xsd:string .
-
-prov:phase_init a prov:Activity,
-        prov:Collection,
-        "process"^^xsd:string ;
-    prov:name "init"^^xsd:string ;
-    prov:used iknow:source_dataset ;
-    prov:wasAssociatedWith iknow:selection_tool,
-        iknow:sgp ;
-    iknow:method "iknow-method"^^xsd:string .
-
-prov:phase_linking a prov:Activity,
-        "process"^^xsd:string ;
-    prov:name "linking"^^xsd:string ;
-    prov:used iknow:selection ;
-    prov:wasAssociatedWith iknow:linking_tool,
-        iknow:sgp ;
-    iknow:actions_input "271"^^xsd:string ;
-    iknow:actions_method "Direct API"^^xsd:string ;
-    iknow:actions_output "272"^^xsd:string ;
-    iknow:state "done"^^xsd:string .
-
-prov:phase_schema_refine a prov:Activity,
-        "process"^^xsd:string ;
-    prov:name "schemarefine"^^xsd:string ;
-    prov:used iknow:editcpa_output ;
-    prov:wasAssociatedWith iknow:schemarefine_tool,
-        iknow:sgp ;
-    iknow:method "iknow-method"^^xsd:string .
-
-iknow:admin a prov:Agent,
+iknow:user a prov:Agent,
         prov:Person ;
     foaf:givenName "tarekadmin"^^xsd:string .
 
-iknow:child a prov:Entity ;
-    iknow:child "{'0': 'Garden', '1': 'Garden', '2': 'Garden', '3': 'Garden', '4': 'Garden'}"^^xsd:string .
-
-iknow:mapping a prov:Entity ;
-    iknow:mapping "{'0': 'https://www.wikidata.org/wiki/Q167346', '1': 'https://www.wikidata.org/wiki/Q167346', '2': 'https://www.wikidata.org/wiki/Q167346', '3': 'https://www.wikidata.org/wiki/Q167346', '4': 'https://www.wikidata.org/wiki/Q167346'}"^^xsd:string .
-
-iknow:parent a prov:Entity ;
-    iknow:parent "{'0': 'Location', '1': 'Location', '2': 'Location', '3': 'Location', '4': 'Location'}"^^xsd:string .
-
-iknow:subject a prov:Entity ;
-    iknow:subject "{}"^^xsd:string .
-
-iknow:type a prov:Entity ;
-    iknow:type "{'0': 'Integer', '1': 'String', '2': 'Integer', '3': 'Integer', '4': 'String'}"^^xsd:string .
-
-iknow:editcpa_output a prov:Entity ;
-    prov:id "PLACEHOLDER"^^xsd:string ;
-    prov:wasDerivedFrom iknow:linking_output ;
-    prov:wasGeneratedBy prov:phase_edit_cpa .
-
-iknow:editcpa_tool a prov:Agent,
-        prov:SoftwareAgent ;
-    iknow:editcpa_tool "iknow-method"^^xsd:string .
-
-iknow:linking_output a prov:Entity ;
-    prov:id "Dataset object (272)"^^xsd:string ;
-    prov:wasDerivedFrom iknow:selection ;
-    prov:wasGeneratedBy prov:phase_linking .
-
-iknow:linking_tool a prov:Agent,
-        prov:SoftwareAgent ;
-    iknow:linking_tool "Direct API"^^xsd:string .
-
-iknow:saving_tool a prov:Agent,
-        prov:SoftwareAgent ;
-    iknow:saving_tool "iknow-method"^^xsd:string .
-
-iknow:schemarefine_output a prov:Entity ;
-    prov:id "PLACEHOLDER"^^xsd:string ;
-    prov:wasDerivedFrom iknow:editcpa_output ;
-    prov:wasGeneratedBy prov:phase_schema_refine .
-
-iknow:schemarefine_tool a prov:Agent,
-        prov:SoftwareAgent ;
-    iknow:schemarefine_tool "iknow-method"^^xsd:string .
-
-iknow:selection a prov:Collection,
+iknow:main-KG a prov:Collection,
         prov:Entity ;
-    prov:hadMember iknow:child,
-        iknow:mapping,
-        iknow:parent,
-        iknow:subject,
-        iknow:type ;
-    prov:wasDerivedFrom iknow:source_dataset ;
-    prov:wasGeneratedBy prov:phase_init .
+    prov:created "2023-05-25"^^xsd:date ;
+    prov:hadMember iknow:sub-KG ;
+    prov:name "Phenobs"^^xsd:string ;
+    prov:wasAttributedTo iknow:user .
 
-iknow:selection_tool a prov:Agent,
+iknow:sub-KG a prov:Entity ;
+    prov:hadPlan "iknow_workflow"^^xsd:string .
+
+iknow:workflow a prov:Entity,
+        prov:Plan .
+
+iknow:phase_i a prov:Activity,
+        prov:Collection,
+        "process"^^xsd:string ;
+    prov:name "init"^^xsd:string ;
+    prov:qualifiedAssociation [ a prov:Association ;
+            prov:agent iknow:sub-KG ;
+            prov:hadPlan iknow:workflow ] ;
+    prov:used iknow:config_i,
+        iknow:input_i ;
+    prov:wasAssociatedWith iknow:tool_i ;
+    iknow:method "iknow-method"^^xsd:string .
+
+iknow:input_i a prov:Entity ;
+    iknow:source "testexample3.csv"^^xsd:string .
+
+iknow:output_i a prov:Collection,
+        prov:Entity ;
+    prov:wasDerivedFrom iknow:input_i ;
+    prov:wasGeneratedBy iknow:phase_i .
+
+iknow:tool_i a prov:Agent,
         prov:SoftwareAgent ;
     iknow:selection_tool "iknow-method"^^xsd:string .
 
-iknow:source_dataset a prov:Entity ;
-    iknow:source "testexample3.csv"^^xsd:string .
+iknow:tool_config_i a prov:Entity ;
+    prov:wasAttributedTo iknow:tool_i ;
+    iknow:toolconfig "iknow-method-config"^^xsd:string .
 
-iknow:sgp a prov:Entity,
-        prov:Plan .
+iknow:config_i a prov:Entity ;
+    iknow:config "default"^^xsd:string .
 

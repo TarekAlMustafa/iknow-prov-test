@@ -1,0 +1,10 @@
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+prov:actions a prov:Entity .
+
+prov:selection a prov:Entity .
+
+prov:state a prov:Entity .
+
+prov:type a prov:Entity .
+
